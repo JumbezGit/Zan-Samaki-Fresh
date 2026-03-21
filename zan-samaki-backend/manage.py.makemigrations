@@ -1,0 +1,11 @@
+echo "Django backend structure and initial files created successfully!"
+echo "Next steps:"
+echo "1. cd zan-samaki-backend"
+echo "2. python -m venv venv"
+echo "3. venv\\Scripts\\activate (Windows)"
+echo "4. pip install -r requirements.txt"
+echo "5. python manage.py makemigrations"
+echo "6. python manage.py migrate"
+echo "7. python manage.py createsuperuser"
+echo "8. python manage.py runserver"
+
