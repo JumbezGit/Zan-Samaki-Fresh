@@ -26,7 +26,7 @@ const LoginModal = ({ isOpen, onClose, onSuccess }: LoginModalProps) => {
     try {
       const endpoint = isLogin ? 'login' : 'register'
       const body = isLogin 
-        ? { username: data.username, password: data.password }
+        ? { email: data.email, password: data.password }
         : { ...data, role }
       
       const res = await fetch(`/api/auth/jwt/${endpoint}/`, {
@@ -106,8 +106,8 @@ const LoginModal = ({ isOpen, onClose, onSuccess }: LoginModalProps) => {
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 {...register('password', { required: 'Nenosiri ni lazima', minLength: {
-                  value: 6,
-                  message: 'Nenosiri lazima liwe na herufi 6+'
+                  value: 5,
+                  message: 'Nenosiri lazima liwe na herufi 5+'
                 } })}
                 type="password"
                 className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-ocean-500 focus:border-transparent transition-all"

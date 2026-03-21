@@ -149,7 +149,7 @@ const AdminDashboard = () => {
       {/* Django Admin Link */}
       <div className="mt-12 text-center">
         <a 
-          href="/admin/" 
+          href="http://127.0.0.1:8000/admin/" 
           target="_blank" 
           className="inline-flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all"
         >

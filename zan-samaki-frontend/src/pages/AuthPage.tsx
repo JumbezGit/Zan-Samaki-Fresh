@@ -24,10 +24,15 @@ const AuthPage = ({ setUser, setRole }: AuthPageProps) => {
     setLoading(true)
 
     try {
-      const endpoint = isLogin ? '/api/users/login/' : '/api/users/register/'
-      const body = isLogin 
+      const endpoint = isLogin ? '/api/auth/jwt/login/' : '/api/auth/jwt/register/'
+      const body = isLogin
         ? { email: formData.email, password: formData.password }
-        : formData
+        : {
+            username: formData.name,
+            email: formData.email,
+            password: formData.password,
+            role: formData.role,
+          }
 
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -35,16 +40,16 @@ const AuthPage = ({ setUser, setRole }: AuthPageProps) => {
         body: JSON.stringify(body)
       })
 
+      const data = await res.json()
+
       if (res.ok) {
-        const data = await res.json()
-        localStorage.setItem('token', data.token)
+        localStorage.setItem('token', data.auth_token)
         setUser(data.user)
         setRole(data.user.role)
-        toast.success(isLogin ? 'Umeingia! 🎉' : 'Akaunti yako imeundwa! 🎉')
+        toast.success(isLogin ? 'Umeingia!' : 'Akaunti yako imeundwa!')
         navigate('/')
       } else {
-        const error = await res.json()
-        toast.error(error.message || 'Hitilafu imetokea')
+        toast.error(data.detail || data.message || 'Hitilafu imetokea')
       }
     } catch (err) {
       toast.error('Hitilafu ya mtandao')
@@ -117,6 +122,7 @@ const AuthPage = ({ setUser, setRole }: AuthPageProps) => {
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="password"
+                minLength={5}
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-ocean-500 focus:border-transparent bg-white/50"

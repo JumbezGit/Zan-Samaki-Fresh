@@ -10,7 +10,7 @@ interface NavbarProps {
 
 const Navbar = ({ user, navItems, onLogin, onLogout }: NavbarProps) => {
   return (
-    <nav className="bg-white/80 backdrop-blur-md shadow-lg sticky top-0 z-50 border-b border-ocean-100">
+    <nav className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-ocean-100">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-between items-center h-16">
           <Link to="/" className="flex items-center space-x-2">

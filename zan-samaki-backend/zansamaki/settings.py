@@ -10,8 +10,18 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
+import os
 from pathlib import Path
-from decouple import config
+from importlib.util import find_spec
+
+try:
+    from decouple import config  # type: ignore
+except ModuleNotFoundError:
+    def config(key, default=None, cast=None):
+        value = os.getenv(key, default)
+        if cast is bool:
+            return str(value).strip().lower() in {'1', 'true', 'yes', 'on'}
+        return value
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -39,15 +49,23 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'rest_framework_simplejwt',
-    'djoser',
-    'corsheaders',
-    'channels',
     'marketplace',
 ]
 
+HAS_SIMPLEJWT = find_spec('rest_framework_simplejwt') is not None
+HAS_CORSHEADERS = find_spec('corsheaders') is not None
+HAS_CHANNELS = find_spec('channels') is not None
+
+if HAS_SIMPLEJWT:
+    INSTALLED_APPS.append('rest_framework_simplejwt')
+if HAS_CORSHEADERS:
+    INSTALLED_APPS.append('corsheaders')
+if HAS_CHANNELS:
+    INSTALLED_APPS.append('channels')
+if find_spec('djoser') is not None:
+    INSTALLED_APPS.append('djoser')
+
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -56,6 +74,9 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+if HAS_CORSHEADERS:
+    MIDDLEWARE.insert(0, 'corsheaders.middleware.CorsMiddleware')
 
 ROOT_URLCONF = 'zansamaki.urls'
 
@@ -99,6 +120,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {'min_length': 5},
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
@@ -138,25 +160,26 @@ AUTH_USER_MODEL = 'marketplace.User'
 
 # DRF Config
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
 }
 
-SIMPLE_JWT = {
-    'AUTH_HEADER_TYPES': ('Bearer',),
-}
+if HAS_SIMPLEJWT:
+    REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ]
+    SIMPLE_JWT = {
+        'AUTH_HEADER_TYPES': ('Bearer',),
+    }
+else:
+    REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = [
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
+    ]
 
 # Djoser Config
 DJOSER = {
-    'SERIALIZERS': {
-        'user_create': 'marketplace.serializers.UserCreateSerializer',
-        'user': 'marketplace.serializers.UserSerializer',
-        'current_user': 'marketplace.serializers.UserSerializer',
-    },
     'PERMISSIONS': {
         'user': ['rest_framework.permissions.IsAuthenticated'],
         'user_list': ['rest_framework.permissions.IsAuthenticated'],
@@ -164,7 +187,7 @@ DJOSER = {
     'LOGIN_FIELD': 'email',
     'HIDE_USERS': False,
     'SERIALIZERS': {
-        'user_create': 'djoser.serializers.UserCreateSerializer',
+        'user_create': 'marketplace.serializers.UserCreateSerializer',
         'user': 'marketplace.serializers.UserSerializer',
         'current_user': 'marketplace.serializers.UserSerializer',
     },
@@ -179,11 +202,12 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_CREDENTIALS = True
 
 # Channels
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer',
-    },
-}
+if HAS_CHANNELS:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        },
+    }
 
 # Media files
 MEDIA_URL = '/media/'

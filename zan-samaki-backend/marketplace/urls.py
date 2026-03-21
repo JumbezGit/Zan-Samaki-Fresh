@@ -9,6 +9,8 @@ router.register(r'orders', views.OrderViewSet)
 router.register(r'coolbox', views.CoolBoxRentalViewSet)
 
 urlpatterns = [
+    path('auth/jwt/login/', views.LoginView.as_view()),
+    path('auth/jwt/register/', views.RegisterView.as_view()),
     path('', include(router.urls)),
 ]
 

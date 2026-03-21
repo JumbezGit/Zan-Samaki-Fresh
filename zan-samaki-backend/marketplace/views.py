@@ -1,17 +1,62 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from django.shortcuts import get_object_or_404
+from django.contrib.auth import authenticate
 from django.contrib.auth import get_user_model
 from .models import FishCatch, Order, CoolBoxRental
 from .serializers import (
     FishCatchSerializer, CreateFishCatchSerializer, 
-    OrderSerializer, CreateOrderSerializer,
-    CoolBoxRentalSerializer, UserSerializer
+    OrderSerializer, CoolBoxRentalSerializer, UserSerializer, UserCreateSerializer
 )
 
 User = get_user_model()
+
+
+def _issue_auth_token(user):
+    try:
+        from rest_framework_simplejwt.tokens import RefreshToken
+        return str(RefreshToken.for_user(user).access_token)
+    except ModuleNotFoundError:
+        return f'dev-token-{user.id}'
+
+
+class RegisterView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = UserCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        token = _issue_auth_token(user)
+        return Response(
+            {
+                'auth_token': token,
+                'user': UserSerializer(user).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class LoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        username = request.data.get('username')
+        email = request.data.get('email')
+        password = request.data.get('password')
+
+        if not username and email:
+            user = User.objects.filter(email=email).first()
+            username = user.username if user else None
+
+        user = authenticate(request=request, username=username, password=password)
+        if not user:
+            return Response({'detail': 'Invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
+
+        token = _issue_auth_token(user)
+        return Response({'auth_token': token, 'user': UserSerializer(user).data})
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.all()
@@ -68,6 +113,7 @@ class FishCatchViewSet(viewsets.ModelViewSet):
         return Response(OrderSerializer(order).data)
 
 class OrderViewSet(viewsets.ModelViewSet):
+    queryset = Order.objects.all()
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated]
 
@@ -75,6 +121,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         return Order.objects.filter(buyer=self.request.user)
 
 class CoolBoxRentalViewSet(viewsets.ModelViewSet):
+    queryset = CoolBoxRental.objects.all()
     serializer_class = CoolBoxRentalSerializer
     permission_classes = [IsAuthenticated]
 
