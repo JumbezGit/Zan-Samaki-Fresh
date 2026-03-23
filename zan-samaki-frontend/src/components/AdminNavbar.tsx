@@ -5,9 +5,10 @@ import UserMenu from '@/components/UserMenu'
 interface AdminNavbarProps {
   username: string
   onLogout: () => void
+  onOpenSidebar: () => void
 }
 
-const AdminNavbar = ({ username, onLogout }: AdminNavbarProps) => {
+const AdminNavbar = ({ username, onLogout, onOpenSidebar }: AdminNavbarProps) => {
   return (
     <nav className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-ocean-100">
       <div className="max-w-7xl mx-auto px-4">
@@ -30,7 +31,7 @@ const AdminNavbar = ({ username, onLogout }: AdminNavbarProps) => {
             <UserMenu username={username} onLogout={onLogout} />
           </div>
 
-          <button className="md:hidden p-2" aria-label="Open menu">
+          <button onClick={onOpenSidebar} className="md:hidden p-2" aria-label="Open menu">
             <Menu className="w-6 h-6" />
           </button>
         </div>

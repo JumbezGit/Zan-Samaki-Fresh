@@ -2,7 +2,6 @@ import { type ReactNode, useEffect, useMemo, useState } from 'react'
 import {
   Fish,
   Loader2,
-  Menu,
   RefreshCw,
   Shield,
   ShoppingCart,
@@ -14,6 +13,7 @@ import {
 import toast from 'react-hot-toast'
 
 type AdminSection = 'overview' | 'catches' | 'users' | 'orders' | 'coolbox'
+type UserRole = 'fisher' | 'buyer' | 'admin'
 
 interface AdminUser {
   id: number
@@ -93,9 +93,13 @@ const statusClass = (status: string) => {
   return 'bg-gray-100 text-gray-700'
 }
 
-const AdminDashboard = () => {
+interface AdminDashboardProps {
+  isSidebarOpen: boolean
+  onCloseSidebar: () => void
+}
+
+const AdminDashboard = ({ isSidebarOpen, onCloseSidebar }: AdminDashboardProps) => {
   const [activeSection, setActiveSection] = useState<AdminSection>('overview')
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [users, setUsers] = useState<AdminUser[]>([])
   const [catches, setCatches] = useState<FishCatchRecord[]>([])
   const [orders, setOrders] = useState<OrderRecord[]>([])
@@ -478,30 +482,21 @@ const AdminDashboard = () => {
         <button
           type="button"
           aria-label="Close navigation overlay"
-          onClick={() => setIsSidebarOpen(false)}
-          className="fixed inset-0 z-40 bg-slate-950/45 backdrop-blur-sm"
+          onClick={onCloseSidebar}
+          className="fixed inset-0 z-40 bg-slate-950/45 backdrop-blur-sm lg:hidden"
         />
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-[280px] border-r border-slate-200 bg-slate-950 p-6 text-white shadow-2xl transition-transform duration-300 ${
+        className={`fixed inset-y-0 left-0 z-50 w-[280px] border-r border-slate-200 bg-slate-950 p-6 text-white shadow-2xl transition-transform duration-300 lg:inset-y-auto lg:top-16 lg:h-[calc(100vh-4rem)] lg:translate-x-0 ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="mb-8 flex items-start justify-between gap-4">
-          <div>
-            <div className="mb-4 inline-flex rounded-2xl bg-white/10 p-3">
-              <Shield className="h-7 w-7" />
-            </div>
-            <h1 className="text-2xl font-bold">Admin Workspace</h1>
-            <p className="mt-2 text-sm text-slate-300">
-              Manage users, catch approvals, orders, and coolbox requests directly from ZanSamaki.
-            </p>
-          </div>
+        <div className="mb-6 flex justify-end">
           <button
             type="button"
-            onClick={() => setIsSidebarOpen(false)}
-            className="rounded-xl border border-white/10 p-2 text-slate-200 transition hover:bg-white/10"
+            onClick={onCloseSidebar}
+            className="rounded-xl border border-white/10 p-2 text-slate-200 transition hover:bg-white/10 lg:hidden"
           >
             <X className="h-5 w-5" />
           </button>
@@ -516,7 +511,7 @@ const AdminDashboard = () => {
                 key={section.id}
                 onClick={() => {
                   setActiveSection(section.id)
-                  setIsSidebarOpen(false)
+                  onCloseSidebar()
                 }}
                 className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition-all ${
                   active ? 'bg-white text-slate-950 shadow-lg' : 'text-slate-200 hover:bg-white/10'
@@ -538,21 +533,12 @@ const AdminDashboard = () => {
         </button>
       </aside>
 
-      <div className="space-y-6 p-4 md:p-6">
+      <div className="space-y-6 p-4 md:p-6 lg:pl-[304px]">
         <div className="rounded-[2rem] border border-slate-200 bg-white/85 p-6 shadow-xl backdrop-blur-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-start gap-4">
-              <button
-                type="button"
-                onClick={() => setIsSidebarOpen(true)}
-                className="rounded-2xl bg-slate-950 p-3 text-white shadow-lg transition hover:bg-slate-800"
-              >
-                <Menu className="h-5 w-5" />
-              </button>
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-ocean-600">Admin Panel</p>
-                <h2 className="mt-2 text-3xl font-bold text-slate-950">Marketplace Control Center</h2>
-              </div>
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-ocean-600">Admin Panel</p>
+              <h2 className="mt-2 text-3xl font-bold text-slate-950">Marketplace Control Center</h2>
             </div>
             <div className="flex flex-wrap gap-3">
               <SummaryChip label="Users" value={users.length} icon={Users} />

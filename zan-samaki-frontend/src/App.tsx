@@ -38,6 +38,7 @@ const getRoleLabel = (role: UserRole) => {
 const App = () => {
   const [user, setUser] = useState<AppUser | null>(null)
   const [role, setRole] = useState('')
+  const [adminSidebarOpen, setAdminSidebarOpen] = useState(false)
   const [showLogin, setShowLogin] = useState(false)
   const [loginMode, setLoginMode] = useState<'login' | 'register'>('login')
   const [selectedRole, setSelectedRole] = useState<UserRole>('buyer')
@@ -91,6 +92,7 @@ const App = () => {
     localStorage.removeItem('token')
     setUser(null)
     setRole('')
+    setAdminSidebarOpen(false)
     navigate('/')
     toast.success('Umetoka!')
   }
@@ -150,7 +152,7 @@ const App = () => {
     }
 
     if (role === 'admin') {
-      return <AdminNavbar username={user.username} onLogout={logout} />
+      return <AdminNavbar username={user.username} onLogout={logout} onOpenSidebar={() => setAdminSidebarOpen(true)} />
     }
 
     return <PublicNavbar onLogin={openRoleLogin} />
@@ -168,7 +170,14 @@ const App = () => {
         <Route path="/auth" element={!user ? <AuthPage setUser={setUser} setRole={setRole} /> : <Navigate to="/" />} />
         <Route path="/fisher" element={role === 'fisher' ? <Layout><FisherDashboard /></Layout> : <Navigate to="/" />} />
         <Route path="/buyer" element={role === 'buyer' ? <Layout><BuyerDashboard /></Layout> : <Navigate to="/" />} />
-        <Route path="/admin" element={role === 'admin' ? <Layout><AdminDashboard /></Layout> : <Navigate to="/" />} />
+        <Route
+          path="/admin"
+          element={
+            role === 'admin'
+              ? <Layout><AdminDashboard isSidebarOpen={adminSidebarOpen} onCloseSidebar={() => setAdminSidebarOpen(false)} /></Layout>
+              : <Navigate to="/" />
+          }
+        />
         <Route
           path="/settings"
           element={user ? <Layout><SettingsPage username={user.username} role={role} /></Layout> : <Navigate to="/" />}
