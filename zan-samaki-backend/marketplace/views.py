@@ -14,6 +14,11 @@ from .serializers import (
 User = get_user_model()
 
 
+class IsMarketplaceAdmin(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and request.user.role == 'admin')
+
+
 def _issue_auth_token(user):
     try:
         from rest_framework_simplejwt.tokens import RefreshToken
@@ -58,18 +63,40 @@ class LoginView(APIView):
         token = _issue_auth_token(user)
         return Response({'auth_token': token, 'user': UserSerializer(user).data})
 
-class UserViewSet(viewsets.ReadOnlyModelViewSet):
+class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [AllowAny]
+    http_method_names = ['get', 'patch', 'head', 'options']
+
+    def get_permissions(self):
+        if self.request.user.is_authenticated and self.request.user.role == 'admin':
+            return [IsMarketplaceAdmin()]
+        return [AllowAny()]
 
     def get_queryset(self):
         if self.request.user.is_authenticated:
+            if self.request.user.role == 'admin':
+                return User.objects.all().order_by('-id')
             return User.objects.filter(id=self.request.user.id)
         return User.objects.none()
 
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated], url_path='me')
+    def me(self, request):
+        return Response(UserSerializer(request.user).data)
+
+    def partial_update(self, request, *args, **kwargs):
+        if not request.user.is_authenticated or request.user.role != 'admin':
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        user = self.get_object()
+        serializer = self.get_serializer(user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
 class FishCatchViewSet(viewsets.ModelViewSet):
-    queryset = FishCatch.objects.filter(is_approved=True, status='available')
+    queryset = FishCatch.objects.all()
     serializer_class = FishCatchSerializer
     permission_classes = [IsAuthenticated]
 
@@ -79,6 +106,8 @@ class FishCatchViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated()]
 
     def get_serializer_class(self):
+        if self.request.user.is_authenticated and self.request.user.role == 'admin':
+            return FishCatchSerializer
         if self.action in ['create', 'update', 'partial_update']:
             return CreateFishCatchSerializer
         return FishCatchSerializer
@@ -87,6 +116,8 @@ class FishCatchViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
     def get_queryset(self):
+        if self.request.user.is_authenticated and self.request.user.role == 'admin':
+            return FishCatch.objects.select_related('user').order_by('-created_at')
         if self.request.user.role == 'fisher':
             return FishCatch.objects.filter(user=self.request.user)
         return FishCatch.objects.filter(is_approved=True, status='available')
@@ -118,6 +149,8 @@ class OrderViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        if self.request.user.role == 'admin':
+            return Order.objects.select_related('buyer', 'catch', 'catch__user').order_by('-created_at')
         return Order.objects.filter(buyer=self.request.user)
 
 class CoolBoxRentalViewSet(viewsets.ModelViewSet):
@@ -126,6 +159,8 @@ class CoolBoxRentalViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        if self.request.user.role == 'admin':
+            return CoolBoxRental.objects.select_related('user').order_by('-start_date')
         return CoolBoxRental.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
