@@ -63,6 +63,7 @@ const getTimeLeft = (bidExpiresAt: string | null, serverOffsetMs: number) => {
 const BuyerLivePage = () => {
   const [liveAuctions, setLiveAuctions] = useState<LiveAuction[]>([])
   const [serverOffsetMs, setServerOffsetMs] = useState(0)
+  const [pendingBidAuctionId, setPendingBidAuctionId] = useState<number | null>(null)
   const [, setTick] = useState(0)
 
   const syncServerOffset = (auctions: LiveAuction[]) => {
@@ -117,6 +118,7 @@ const BuyerLivePage = () => {
 
   const placeBid = async (auctionId: number) => {
     try {
+      setPendingBidAuctionId(auctionId)
       const token = localStorage.getItem('token')
       const res = await fetch(`/api/auctions/${auctionId}/bid/`, {
         method: 'POST',
@@ -129,15 +131,11 @@ const BuyerLivePage = () => {
         return
       }
 
-      setLiveAuctions((currentAuctions) =>
-        currentAuctions.map((auction) => (auction.id === auctionId ? data.auction : auction))
-      )
-      if (data?.auction?.server_time) {
-        setServerOffsetMs(new Date(data.auction.server_time).getTime() - Date.now())
-      }
-      toast.success(`Bid imewekwa: TZS ${Number(data.bid_amount).toLocaleString()}`)
+      toast.success(`Bid imewekwa: TZS ${Number(data.bid_amount).toLocaleString()}. Timer itaanza upya kwa buyers wote.`)
     } catch (error) {
       toast.error('Tatizo la kubid mnada')
+    } finally {
+      setPendingBidAuctionId(null)
     }
   }
 
@@ -215,9 +213,10 @@ const BuyerLivePage = () => {
                     </div>
                     <button
                       onClick={() => placeBid(auction.id)}
-                      className="rounded-xl bg-ocean-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-ocean-700"
+                      className="rounded-xl bg-ocean-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-ocean-700 disabled:opacity-60"
+                      disabled={pendingBidAuctionId === auction.id}
                     >
-                      Bid Live
+                      {pendingBidAuctionId === auction.id ? 'Inatuma...' : 'Bid Live'}
                     </button>
                   </div>
 
