@@ -1,33 +1,54 @@
+import { useEffect, useState } from 'react'
 import { Clock3, MapPin, Package, ReceiptText } from 'lucide-react'
+import toast from 'react-hot-toast'
 
-const orders = [
-  {
-    id: 'ORD-201',
-    fish: 'Dagaa Fresh',
-    status: 'Inasafirishwa',
-    amount: 'TZS 24,000',
-    location: 'Stone Town',
-    eta: 'Dakika 25',
-  },
-  {
-    id: 'ORD-198',
-    fish: 'Pweza',
-    status: 'Imethibitishwa',
-    amount: 'TZS 41,500',
-    location: 'Mtoni',
-    eta: 'Dakika 40',
-  },
-  {
-    id: 'ORD-187',
-    fish: "Ng'ongo",
-    status: 'Imekamilika',
-    amount: 'TZS 18,000',
-    location: 'Nungwi',
-    eta: 'Imewasili',
-  },
-]
+interface BuyerOrder {
+  id: number
+  quantity: string
+  total_price: string
+  status: 'pending' | 'paid' | 'delivered'
+  created_at: string
+  catch: {
+    title: string
+    location: string
+  }
+}
+
+const statusLabel: Record<BuyerOrder['status'], string> = {
+  pending: 'Inasubiri',
+  paid: 'Imelipwa',
+  delivered: 'Imekamilika',
+}
 
 const BuyerOrdersPage = () => {
+  const [orders, setOrders] = useState<BuyerOrder[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        const res = await fetch('/api/orders/', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+
+        if (!res.ok) {
+          throw new Error('Failed to fetch orders')
+        }
+
+        const data = await res.json()
+        setOrders(Array.isArray(data) ? data : [])
+      } catch (error) {
+        toast.error('Tatizo la kupakia orders')
+        setOrders([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    void fetchOrders()
+  }, [])
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-12">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
@@ -48,7 +69,16 @@ const BuyerOrdersPage = () => {
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
+      {loading ? (
+        <div className="rounded-2xl border border-white/50 bg-white/70 p-8 text-center text-gray-600 shadow-lg">
+          Inapakia orders...
+        </div>
+      ) : orders.length === 0 ? (
+        <div className="rounded-2xl border border-white/50 bg-white/70 p-8 text-center text-gray-600 shadow-lg">
+          Bado huna order yoyote kwenye database.
+        </div>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-3">
         {orders.map((order) => (
           <div
             key={order.id}
@@ -58,25 +88,29 @@ const BuyerOrdersPage = () => {
               <div>
                 <div className="flex items-center gap-3 mb-3">
                   <span className="px-3 py-1 rounded-full bg-ocean-100 text-ocean-800 text-sm font-semibold">
-                    {order.id}
+                    ORD-{order.id}
                   </span>
                   <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-sm font-semibold">
-                    {order.status}
+                    {statusLabel[order.status] || order.status}
                   </span>
                 </div>
-                <h2 className="text-2xl font-bold mb-2">{order.fish}</h2>
+                <h2 className="text-2xl font-bold mb-2">{order.catch?.title || 'Samaki'}</h2>
                 <div className="flex flex-wrap gap-4 text-gray-600">
                   <span className="flex items-center gap-2">
                     <ReceiptText className="w-4 h-4" />
-                    {order.amount}
+                    TZS {Number(order.total_price).toLocaleString()}
                   </span>
                   <span className="flex items-center gap-2">
                     <MapPin className="w-4 h-4" />
-                    {order.location}
+                    {order.catch?.location || 'Zanzibar'}
                   </span>
                   <span className="flex items-center gap-2">
                     <Clock3 className="w-4 h-4" />
-                    {order.eta}
+                    {new Date(order.created_at).toLocaleDateString()}
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <Package className="w-4 h-4" />
+                    {order.quantity} kg
                   </span>
                 </div>
               </div>
@@ -87,7 +121,8 @@ const BuyerOrdersPage = () => {
             </div>
           </div>
         ))}
-      </div>
+        </div>
+      )}
     </div>
   )
 }
