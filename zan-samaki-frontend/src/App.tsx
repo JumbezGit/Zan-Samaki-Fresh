@@ -174,13 +174,21 @@ const App = () => {
           path="/admin"
           element={
             role === 'admin'
-              ? <Layout><AdminDashboard isSidebarOpen={adminSidebarOpen} onCloseSidebar={() => setAdminSidebarOpen(false)} /></Layout>
+              ? <Layout><AdminDashboard isSidebarOpen={adminSidebarOpen} onCloseSidebar={() => setAdminSidebarOpen(false)} initialSection="overview" /></Layout>
               : <Navigate to="/" />
           }
         />
         <Route
           path="/settings"
-          element={user ? <Layout><SettingsPage username={user.username} role={role} /></Layout> : <Navigate to="/" />}
+          element={
+            user
+              ? (
+                role === 'admin'
+                  ? <Layout><AdminDashboard isSidebarOpen={adminSidebarOpen} onCloseSidebar={() => setAdminSidebarOpen(false)} initialSection="settings" /></Layout>
+                  : <Layout><SettingsPage username={user.username} role={role} /></Layout>
+              )
+              : <Navigate to="/" />
+          }
         />
       </Routes>
 

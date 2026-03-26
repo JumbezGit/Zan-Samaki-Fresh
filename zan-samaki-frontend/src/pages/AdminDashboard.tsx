@@ -3,16 +3,18 @@ import {
   Fish,
   Loader2,
   RefreshCw,
+  Settings,
   Shield,
   ShoppingCart,
   Snowflake,
+  User,
   Users,
   X,
   XCircle
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-type AdminSection = 'overview' | 'catches' | 'users' | 'orders' | 'coolbox'
+type AdminSection = 'overview' | 'catches' | 'users' | 'orders' | 'coolbox' | 'settings'
 type UserRole = 'fisher' | 'buyer' | 'admin'
 
 interface AdminUser {
@@ -62,7 +64,8 @@ const sections: Array<{ id: AdminSection; label: string; icon: typeof Shield }> 
   { id: 'catches', label: 'Catch Approval', icon: Fish },
   { id: 'users', label: 'Users', icon: Users },
   { id: 'orders', label: 'Orders', icon: ShoppingCart },
-  { id: 'coolbox', label: 'CoolBox', icon: Snowflake }
+  { id: 'coolbox', label: 'CoolBox', icon: Snowflake },
+  { id: 'settings', label: 'Settings', icon: Settings }
 ]
 
 const currency = new Intl.NumberFormat('en-TZ', {
@@ -96,10 +99,11 @@ const statusClass = (status: string) => {
 interface AdminDashboardProps {
   isSidebarOpen: boolean
   onCloseSidebar: () => void
+  initialSection?: AdminSection
 }
 
-const AdminDashboard = ({ isSidebarOpen, onCloseSidebar }: AdminDashboardProps) => {
-  const [activeSection, setActiveSection] = useState<AdminSection>('overview')
+const AdminDashboard = ({ isSidebarOpen, onCloseSidebar, initialSection = 'overview' }: AdminDashboardProps) => {
+  const [activeSection, setActiveSection] = useState<AdminSection>(initialSection)
   const [users, setUsers] = useState<AdminUser[]>([])
   const [catches, setCatches] = useState<FishCatchRecord[]>([])
   const [orders, setOrders] = useState<OrderRecord[]>([])
@@ -151,6 +155,10 @@ const AdminDashboard = ({ isSidebarOpen, onCloseSidebar }: AdminDashboardProps) 
   useEffect(() => {
     void loadAdminData()
   }, [])
+
+  useEffect(() => {
+    setActiveSection(initialSection)
+  }, [initialSection])
 
   const stats = useMemo(() => {
     const pendingCatches = catches.filter((item) => !item.is_approved).length
@@ -457,6 +465,40 @@ const AdminDashboard = ({ isSidebarOpen, onCloseSidebar }: AdminDashboardProps) 
     </Panel>
   )
 
+  const renderSettings = () => (
+    <Panel title="Settings">
+      <div className="grid gap-6 md:grid-cols-2">
+        <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+          <div className="mb-5 flex items-center gap-3">
+            <User className="h-5 w-5 text-ocean-700" />
+            <h3 className="text-xl font-semibold text-slate-900">Admin Profile</h3>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm uppercase tracking-wide text-slate-500">Admin Users</p>
+              <p className="mt-1 text-lg font-medium text-slate-800">{users.filter((item) => item.role === 'admin').length}</p>
+            </div>
+            <div>
+              <p className="text-sm uppercase tracking-wide text-slate-500">Total Users</p>
+              <p className="mt-1 text-lg font-medium text-slate-800">{users.length}</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+          <div className="mb-5 flex items-center gap-3">
+            <Settings className="h-5 w-5 text-ocean-700" />
+            <h3 className="text-xl font-semibold text-slate-900">Workspace Settings</h3>
+          </div>
+          <p className="text-slate-600">
+            Admin settings now live inside the dashboard so you can keep using the same fixed sidenav while managing
+            the system.
+          </p>
+        </section>
+      </div>
+    </Panel>
+  )
+
   const renderContent = () => {
     if (loading) {
       return (
@@ -473,7 +515,8 @@ const AdminDashboard = ({ isSidebarOpen, onCloseSidebar }: AdminDashboardProps) 
     if (activeSection === 'catches') return renderCatches()
     if (activeSection === 'users') return renderUsers()
     if (activeSection === 'orders') return renderOrders()
-    return renderCoolBox()
+    if (activeSection === 'coolbox') return renderCoolBox()
+    return renderSettings()
   }
 
   return (
@@ -534,7 +577,7 @@ const AdminDashboard = ({ isSidebarOpen, onCloseSidebar }: AdminDashboardProps) 
       </aside>
 
       <div className="space-y-6 p-4 md:p-6 lg:pl-[304px]">
-        <div className="rounded-[2rem] border border-slate-200 bg-white/85 p-6 shadow-xl backdrop-blur-sm">
+        <div className="rounded-[1rem] border border-slate-200 bg-white/85 p-6  backdrop-blur-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-ocean-600">Admin Panel</p>
@@ -555,14 +598,14 @@ const AdminDashboard = ({ isSidebarOpen, onCloseSidebar }: AdminDashboardProps) 
 }
 
 const Panel = ({ title, children }: { title: string; children: ReactNode }) => (
-  <div className="rounded-[2rem] border border-slate-200 bg-white/85 p-6 shadow-xl backdrop-blur-sm">
+  <div className="rounded-[1rem] border border-slate-200 bg-white/85 p-6 shadow-xl backdrop-blur-sm">
     <h3 className="mb-5 text-xl font-bold text-slate-950">{title}</h3>
     {children}
   </div>
 )
 
 const EmptyState = ({ text }: { text: string }) => (
-  <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-slate-500">
+  <div className="rounded-1xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-slate-500">
     {text}
   </div>
 )
@@ -586,7 +629,7 @@ const StatCard = ({
   }
 
   return (
-    <div className={`rounded-[1.75rem] bg-gradient-to-br ${tones[tone]} p-6 text-white shadow-xl`}>
+    <div className={`rounded-2xl bg-gradient-to-br ${tones[tone]} p-6 text-white shadow-xl`}>
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold uppercase tracking-wide text-white/80">{label}</p>
