@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Fish, MapPin, ShoppingCart, Phone } from 'lucide-react'
+import { Fish, ShoppingCart, Phone } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useSearchParams } from 'react-router-dom'
 import FishCard, { type FishCardItem } from '@/components/FishCard'
@@ -24,46 +24,24 @@ interface PurchaseInvoice {
 const BuyerDashboard = () => {
   const [searchParams] = useSearchParams()
   const [catches, setCatches] = useState<Catch[]>([])
-  const [filters, setFilters] = useState({
-    search: searchParams.get('search') || '',
-    fishType: '',
-    location: '',
-    maxPrice: ''
-  })
-  const [loading, setLoading] = useState(false)
+  const [search, setSearch] = useState(searchParams.get('search') || '')
   const [selectedCatch, setSelectedCatch] = useState<Catch | null>(null)
   const [purchaseQuantity, setPurchaseQuantity] = useState('1')
   const [invoice, setInvoice] = useState<PurchaseInvoice | null>(null)
 
-  const FISH_TYPES = ['Dagaa', 'Changu', "Ng'ongo", 'Tafi', 'Pweza']
-
   useEffect(() => {
-    setFilters((currentFilters) => {
-      const nextSearch = searchParams.get('search') || ''
-
-      if (currentFilters.search === nextSearch) {
-        return currentFilters
-      }
-
-      return {
-        ...currentFilters,
-        search: nextSearch
-      }
-    })
+    setSearch(searchParams.get('search') || '')
   }, [searchParams])
 
-  const fetchCatches = async (activeFilters = filters) => {
-    setLoading(true)
+  const fetchCatches = async (activeSearch = search) => {
     try {
       const token = localStorage.getItem('token')
       const url = new URL('/api/catches/', window.location.origin)
       const params = new URLSearchParams()
 
-      Object.entries(activeFilters).forEach(([key, value]) => {
-        if (value) {
-          params.append(key, value)
-        }
-      })
+      if (activeSearch) {
+        params.append('search', activeSearch)
+      }
 
       url.search = params.toString()
 
@@ -75,15 +53,13 @@ const BuyerDashboard = () => {
       setCatches(Array.isArray(data) ? data : [])
     } catch (err) {
       toast.error('Tatizo la kupakia soko')
-    } finally {
-      setLoading(false)
     }
   }
 
   useEffect(() => {
-    void fetchCatches(filters)
+    void fetchCatches(search)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters])
+  }, [search])
 
   const buyCatch = async (catchId: number, quantity: number) => {
     try {
@@ -133,69 +109,7 @@ const BuyerDashboard = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12">
-      <div className="">
-
-
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[1.2fr_0.9fr_0.9fr_0.8fr_auto]">
-
-
-          <div>
-            <label className="block font-semibold mb-2">Aina ya Samaki</label>
-            <select
-              value={filters.fishType}
-              onChange={(e) => setFilters({ ...filters, fishType: e.target.value })}
-              className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-ocean-500"
-            >
-              <option value="">Zote</option>
-              {FISH_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block font-semibold mb-2 flex items-center space-x-2">
-              <MapPin className="w-4 h-4" />
-              <span>Mahali</span>
-            </label>
-            <input
-              value={filters.location}
-              onChange={(e) => setFilters({ ...filters, location: e.target.value })}
-              className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-ocean-500"
-              placeholder="Stone Town"
-            />
-          </div>
-
-          <div>
-            <label className="block font-semibold mb-2">Bei Max kwa kg</label>
-            <input
-              type="number"
-              value={filters.maxPrice}
-              onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value })}
-              className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-ocean-500"
-              placeholder="5000"
-            />
-          </div>
-
-          <div className="flex items-end">
-            <button
-              onClick={() => void fetchCatches(filters)}
-              disabled={loading}
-              className="w-full bg-ocean-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-ocean-700 disabled:opacity-50 transition-all"
-            >
-              {loading ? 'Inapakia...' : 'Tumia Filtari'}
-            </button>
-          </div>
-        </div>
-      </div>
-
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-4xl font-bold flex items-center space-x-3">
-          <Fish className="w-12 h-12 text-ocean-600" />
-          <span>Soko la Samaki Safi</span>
-        </h1>
         <div className="text-2xl font-bold text-emerald-600">
           {catches.length} patokanayo
         </div>
