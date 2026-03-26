@@ -1,18 +1,21 @@
 import { useEffect, useState } from 'react'
-import { Fish, MapPin, ShoppingCart, Phone, User } from 'lucide-react'
+import { Fish, MapPin, ShoppingCart, Phone } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useSearchParams } from 'react-router-dom'
+import FishCard, { type FishCardItem } from '@/components/FishCard'
 
-interface Catch {
-  id: number
-  title: string
-  fish_type: string
-  quantity: number
-  price_per_kg: number
-  photo: string
-  location: string
+type Catch = FishCardItem
+
+const demoCatch: Catch = {
+  id: 0,
+  title: 'Dagaa Fresh Demo',
+  fish_type: 'Dagaa',
+  quantity: 12,
+  price_per_kg: 8500,
+  photo: '',
+  location: 'Stone Town',
   user: {
-    username: string
+    username: 'Demo Fisher'
   }
 }
 
@@ -27,6 +30,7 @@ const BuyerDashboard = () => {
   })
   const [loading, setLoading] = useState(false)
   const [selectedCatch, setSelectedCatch] = useState<Catch | null>(null)
+  const [purchaseQuantity, setPurchaseQuantity] = useState('1')
 
   const FISH_TYPES = ['Dagaa', 'Changu', "Ng'ongo", 'Tafi', 'Pweza']
 
@@ -105,6 +109,11 @@ const BuyerDashboard = () => {
     }
   }
 
+  const openCatchDetails = (catchItem: Catch) => {
+    setSelectedCatch(catchItem)
+    setPurchaseQuantity('1')
+  }
+
   const filteredCatches = catches.filter((catchItem) => {
     if (
       filters.search &&
@@ -127,6 +136,17 @@ const BuyerDashboard = () => {
 
     return true
   })
+
+  const parsedPurchaseQuantity = Number(purchaseQuantity)
+  const isQuantityValid = Boolean(
+    selectedCatch &&
+    Number.isFinite(parsedPurchaseQuantity) &&
+    parsedPurchaseQuantity > 0 &&
+    parsedPurchaseQuantity <= selectedCatch.quantity
+  )
+  const totalPrice = selectedCatch && isQuantityValid
+    ? parsedPurchaseQuantity * selectedCatch.price_per_kg
+    : 0
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12">
@@ -198,62 +218,20 @@ const BuyerDashboard = () => {
         </div>
       </div>
 
+      <div className="mb-10">
+        <div className="mb-4">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-ocean-600">Demo Card</p>
+          <h2 className="text-2xl font-bold text-slate-900">Muonekano wa fish card</h2>
+        </div>
+
+        <div className="max-w-sm">
+          <FishCard item={demoCatch} onSelect={openCatchDetails} />
+        </div>
+      </div>
+
       <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
         {filteredCatches.map((catchItem) => (
-          <div
-            key={catchItem.id}
-            className="group bg-white/70 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/50 hover:shadow-2xl hover:-translate-y-2 transition-all cursor-pointer"
-            onClick={() => setSelectedCatch(catchItem)}
-          >
-            <div className="relative h-48 bg-gradient-to-br from-blue-400/20 to-ocean-500/20 rounded-xl mb-4 overflow-hidden">
-              {catchItem.photo ? (
-                <img
-                  src={catchItem.photo}
-                  alt={catchItem.title}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform"
-                />
-              ) : (
-                <Fish className="w-24 h-24 text-white/30 absolute inset-0 m-auto" />
-              )}
-            </div>
-
-            <h3 className="font-bold text-xl mb-3 line-clamp-1">{catchItem.title}</h3>
-
-            <div className="flex items-center space-x-2 mb-3">
-              <div className="px-3 py-1 bg-ocean-100 text-ocean-800 rounded-full text-sm font-semibold">
-                {catchItem.fish_type}
-              </div>
-              <div className="px-2 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-medium">
-                {catchItem.location}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <p className="text-2xl font-bold text-emerald-600">
-                  TZS {catchItem.price_per_kg.toLocaleString()}
-                </p>
-                <p className="text-sm text-gray-500">kwa kg</p>
-              </div>
-              <div className="text-xl font-bold">{catchItem.quantity} kg</div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <User className="w-5 h-5" />
-                <span>{catchItem.user.username}</span>
-              </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setSelectedCatch(catchItem)
-                }}
-                className="bg-gradient-to-r from-emerald-500 to-green-600 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
-              >
-                Nunua Sasa
-              </button>
-            </div>
-          </div>
+          <FishCard key={catchItem.id} item={catchItem} onSelect={openCatchDetails} />
         ))}
       </div>
 
@@ -278,12 +256,37 @@ const BuyerDashboard = () => {
                   <p className="text-2xl font-bold text-emerald-600">
                     TZS {selectedCatch.price_per_kg.toLocaleString()}
                   </p>
-                  <p className="text-sm text-gray-600">kwa kg</p>
+                  <p className="text-sm text-gray-600">bei kwa kilo</p>
                 </div>
                 <div className="border-l border-gray-200 pl-6">
                   <p className="text-xl font-bold">{selectedCatch.quantity} kg</p>
-                  <p className="text-sm text-gray-600">jumla</p>
+                  <p className="text-sm text-gray-600">stock iliyopo</p>
                 </div>
+              </div>
+
+              <div className="rounded-xl bg-emerald-50 p-4">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Weka kiasi cha kilo unachotaka
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max={selectedCatch.quantity}
+                  step="0.5"
+                  value={purchaseQuantity}
+                  onChange={(event) => setPurchaseQuantity(event.target.value)}
+                  className="w-full rounded-xl border border-emerald-200 bg-white px-4 py-3 focus:ring-2 focus:ring-emerald-400"
+                  placeholder="Mfano 2"
+                />
+                <div className="mt-3 flex items-center justify-between text-sm text-gray-700">
+                  <span>Bei kwa kilo: TZS {selectedCatch.price_per_kg.toLocaleString()}</span>
+                  <span>Jumla: TZS {totalPrice.toLocaleString()}</span>
+                </div>
+                {!isQuantityValid && (
+                  <p className="mt-2 text-sm text-red-600">
+                    Weka kiasi sahihi kati ya 1 na {selectedCatch.quantity} kg.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -293,8 +296,15 @@ const BuyerDashboard = () => {
                 <span>Piga Mvuvi</span>
               </button>
               <button
-                onClick={() => buyCatch(selectedCatch.id, selectedCatch.quantity)}
-                className="flex-1 bg-gradient-to-r from-emerald-500 to-green-600 text-white py-3 px-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
+                onClick={() => {
+                  if (!isQuantityValid) {
+                    toast.error('Weka kiasi sahihi cha kilo')
+                    return
+                  }
+                  buyCatch(selectedCatch.id, parsedPurchaseQuantity)
+                }}
+                className="flex-1 bg-gradient-to-r from-emerald-500 to-green-600 text-white py-3 px-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-60"
+                disabled={!isQuantityValid}
               >
                 <ShoppingCart className="w-5 h-5 inline mr-2" />
                 Lipa Tigo Pesa
