@@ -43,8 +43,25 @@ const liveFeed = [
   },
 ]
 
+const getAuctionSocketUrl = () => {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  return `${protocol}//${window.location.host}/ws/auctions/`
+}
+
+const getTimeLeft = (lastBidAt: string | null) => {
+  if (!lastBidAt) {
+    return 'Dakika 1'
+  }
+
+  const elapsed = Date.now() - new Date(lastBidAt).getTime()
+  const remainingMs = Math.max(0, 60000 - elapsed)
+  const seconds = Math.ceil(remainingMs / 1000)
+  return `${seconds}s`
+}
+
 const BuyerLivePage = () => {
   const [liveAuctions, setLiveAuctions] = useState<LiveAuction[]>([])
+  const [, setTick] = useState(0)
 
   const fetchAuctions = async () => {
     try {
@@ -61,6 +78,27 @@ const BuyerLivePage = () => {
 
   useEffect(() => {
     void fetchAuctions()
+  }, [])
+
+  useEffect(() => {
+    const socket = new WebSocket(getAuctionSocketUrl())
+
+    socket.onmessage = (event) => {
+      const payload = JSON.parse(event.data)
+      if (payload.type === 'auction_snapshot') {
+        setLiveAuctions(Array.isArray(payload.auctions) ? payload.auctions : [])
+      }
+    }
+
+    return () => socket.close()
+  }, [])
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setTick((value) => value + 1)
+    }, 1000)
+
+    return () => window.clearInterval(interval)
   }, [])
 
   const placeBid = async (auctionId: number) => {
@@ -142,12 +180,16 @@ const BuyerLivePage = () => {
                       </p>
                     </div>
                     <div className="rounded-xl border border-slate-100 bg-white p-4">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Gap ya bei</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Muda uliobaki</p>
                       <p className="mt-1 text-lg font-bold text-red-600">
-                        +TZS {Number(auction.increment_gap).toLocaleString()}
+                        {getTimeLeft(auction.last_bid_at)}
                       </p>
                     </div>
                   </div>
+
+                  <p className="mb-3 text-sm text-slate-600">
+                    Gap ya kuongeza: <span className="font-semibold">TZS {Number(auction.increment_gap).toLocaleString()}</span>
+                  </p>
 
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-sm text-slate-600">
@@ -158,7 +200,7 @@ const BuyerLivePage = () => {
                       onClick={() => placeBid(auction.id)}
                       className="rounded-xl bg-ocean-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-ocean-700"
                     >
-                      Chagua Bei
+                      Bid Live
                     </button>
                   </div>
 

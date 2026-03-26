@@ -58,10 +58,29 @@ const FisherDashboard = () => {
     { value: 'Pweza', label: 'Pweza (Octopus)' },
   ]
 
+  const getAuctionSocketUrl = () => {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    return `${protocol}//${window.location.host}/ws/auctions/`
+  }
+
   useEffect(() => {
     void fetchCatches()
     void fetchAuctions()
     setEarnings(125000 + Math.floor(Math.random() * 25000))
+  }, [])
+
+  useEffect(() => {
+    const socket = new WebSocket(getAuctionSocketUrl())
+
+    socket.onmessage = (event) => {
+      const payload = JSON.parse(event.data)
+      if (payload.type === 'auction_snapshot') {
+        const nextAuctions = Array.isArray(payload.auctions) ? payload.auctions : []
+        setAuctions(nextAuctions)
+      }
+    }
+
+    return () => socket.close()
   }, [])
 
   const fetchCatches = async () => {
@@ -241,6 +260,53 @@ const FisherDashboard = () => {
             <span>Omba Sanduku la Baridi</span>
           </button>
         </div>
+      </div>
+
+      <div className="mt-12">
+        <h2 className="mb-8 flex items-center space-x-3 text-3xl font-bold">
+          <Gavel className="w-10 h-10" />
+          <span>Samaki Tayari Kwa Mnada</span>
+        </h2>
+        {eligibleCatches.length === 0 ? (
+          <div className="rounded-2xl border border-white/50 bg-white/70 p-8 text-center text-gray-600 shadow-lg">
+            Hakuna samaki wa database walioko tayari kwa mnada kwa sasa. Hakikisha catch imeidhinishwa na ipo `available`.
+          </div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {eligibleCatches.map((catchItem) => (
+              <div key={catchItem.id} className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-lg">
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-xl font-bold">{catchItem.title}</h3>
+                    <p className="mt-1 text-sm text-gray-500">{catchItem.fish_type}</p>
+                  </div>
+                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
+                    Approved
+                  </span>
+                </div>
+                <div className="mb-5 space-y-2 text-sm text-gray-600">
+                  <p>Kilo zilizopo: <span className="font-semibold">{catchItem.quantity} kg</span></p>
+                  <p>Bei ya kawaida: <span className="font-semibold">TZS {Number(catchItem.price_per_kg).toLocaleString()}/kg</span></p>
+                  <p>Status: <span className="font-semibold">{catchItem.status}</span></p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuctionData((currentData) => ({
+                      ...currentData,
+                      catch: String(catchItem.id),
+                      initial_price: String(catchItem.price_per_kg),
+                    }))
+                    setShowAuctionForm(true)
+                  }}
+                  className="w-full rounded-xl bg-ocean-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-ocean-700"
+                >
+                  Weka Kwenye Mnada
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="mt-12">

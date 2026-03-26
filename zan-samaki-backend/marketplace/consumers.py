@@ -1,7 +1,8 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
-from .models import FishCatch
+from .models import Auction
+from .serializers import AuctionSerializer
 
 class NotificationConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -38,4 +39,49 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'message': message
         }))
+
+
+class AuctionConsumer(AsyncWebsocketConsumer):
+    group_name = 'auctions_live'
+
+    async def connect(self):
+        await self.channel_layer.group_add(
+            self.group_name,
+            self.channel_name
+        )
+        await self.accept()
+        await self.send_current_snapshot()
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(
+            self.group_name,
+            self.channel_name
+        )
+
+    async def receive(self, text_data):
+        text_data_json = json.loads(text_data or '{}')
+        if text_data_json.get('type') == 'ping':
+            await self.send(text_data=json.dumps({'type': 'pong'}))
+
+    async def auction_snapshot(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'auction_snapshot',
+            'auctions': event['auctions']
+        }))
+
+    async def send_current_snapshot(self):
+        auctions = await self.get_open_auctions()
+        await self.send(text_data=json.dumps({
+            'type': 'auction_snapshot',
+            'auctions': auctions
+        }))
+
+    @database_sync_to_async
+    def get_open_auctions(self):
+        queryset = Auction.objects.select_related(
+            'catch',
+            'seller',
+            'highest_bidder'
+        ).prefetch_related('bids__buyer').filter(status='open').order_by('-created_at')
+        return AuctionSerializer(queryset, many=True).data
 

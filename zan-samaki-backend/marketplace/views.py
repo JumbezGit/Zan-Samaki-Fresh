@@ -9,6 +9,8 @@ from django.db import transaction
 from decimal import Decimal, InvalidOperation
 from django.utils import timezone
 from datetime import timedelta
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 from .models import FishCatch, Order, CoolBoxRental, Auction, AuctionBid
 from .serializers import (
     FishCatchSerializer, CreateFishCatchSerializer, 
@@ -32,6 +34,26 @@ def _issue_auth_token(user):
         return f'dev-token-{user.id}'
 
 
+def _broadcast_auction_snapshot():
+    channel_layer = get_channel_layer()
+    if not channel_layer:
+        return
+
+    queryset = Auction.objects.select_related(
+        'catch',
+        'seller',
+        'highest_bidder'
+    ).prefetch_related('bids__buyer').filter(status='open').order_by('-created_at')
+
+    async_to_sync(channel_layer.group_send)(
+        'auctions_live',
+        {
+            'type': 'auction_snapshot',
+            'auctions': AuctionSerializer(queryset, many=True).data,
+        }
+    )
+
+
 def _settle_expired_auctions():
     cutoff = timezone.now() - timedelta(minutes=1)
     auctions = Auction.objects.select_related('catch', 'highest_bidder', 'seller').filter(
@@ -39,6 +61,8 @@ def _settle_expired_auctions():
         last_bid_at__isnull=False,
         last_bid_at__lte=cutoff,
     )
+
+    has_changes = False
 
     for auction in auctions:
         if auction.highest_bidder and auction.catch.quantity > 0:
@@ -61,6 +85,10 @@ def _settle_expired_auctions():
 
         auction.closed_at = timezone.now()
         auction.save(update_fields=['status', 'closed_at'])
+        has_changes = True
+
+    if has_changes:
+        _broadcast_auction_snapshot()
 
 
 class RegisterView(APIView):
@@ -295,6 +323,7 @@ class AuctionViewSet(viewsets.ModelViewSet):
         )
         catch.status = 'reserved'
         catch.save(update_fields=['status'])
+        _broadcast_auction_snapshot()
 
     @action(detail=True, methods=['post'])
     def bid(self, request, pk=None):
@@ -330,6 +359,8 @@ class AuctionViewSet(viewsets.ModelViewSet):
             auction.highest_bidder = request.user
             auction.last_bid_at = timezone.now()
             auction.save(update_fields=['current_price', 'highest_bidder', 'last_bid_at'])
+
+        _broadcast_auction_snapshot()
 
         return Response(
             {
