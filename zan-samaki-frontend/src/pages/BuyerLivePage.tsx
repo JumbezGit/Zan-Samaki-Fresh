@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Activity, Clock3, Gavel, Radio, Users, Waves } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -61,7 +62,9 @@ const getTimeLeft = (bidExpiresAt: string | null, serverOffsetMs: number) => {
 }
 
 const BuyerLivePage = () => {
+  const navigate = useNavigate()
   const [liveAuctions, setLiveAuctions] = useState<LiveAuction[]>([])
+  const [currentUsername, setCurrentUsername] = useState('')
   const [serverOffsetMs, setServerOffsetMs] = useState(0)
   const [pendingBidAuctionId, setPendingBidAuctionId] = useState<number | null>(null)
   const [, setTick] = useState(0)
@@ -94,19 +97,74 @@ const BuyerLivePage = () => {
   }, [])
 
   useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        const res = await fetch('/api/users/me/', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+
+        if (!res.ok) {
+          return
+        }
+
+        const data = await res.json()
+        setCurrentUsername(data?.username || '')
+      } catch {
+        setCurrentUsername('')
+      }
+    }
+
+    void fetchCurrentUser()
+  }, [])
+
+  useEffect(() => {
     const socket = new WebSocket(getAuctionSocketUrl())
 
     socket.onmessage = (event) => {
       const payload = JSON.parse(event.data)
       if (payload.type === 'auction_snapshot') {
         const auctions = Array.isArray(payload.auctions) ? payload.auctions : []
-        setLiveAuctions(auctions)
+        setLiveAuctions((previousAuctions) => {
+          const closedWinningAuction = previousAuctions.find(
+            (auction) =>
+              auction.highest_bidder?.username === currentUsername &&
+              !auctions.some((openAuction: LiveAuction) => openAuction.id === auction.id)
+          )
+
+          if (closedWinningAuction) {
+            const token = localStorage.getItem('token')
+            void fetch('/api/orders/', {
+              headers: { Authorization: `Bearer ${token}` }
+            })
+              .then((res) => res.json())
+              .then((orders) => {
+                const matchedOrder = Array.isArray(orders)
+                  ? orders.find(
+                    (order: { id: number; status: string; catch?: { title?: string } }) =>
+                      order.status === 'pending' &&
+                      order.catch?.title === closedWinningAuction.catch.title
+                  )
+                  : null
+
+                if (matchedOrder) {
+                  toast.success('Umeshinda mnada. Mfumo unafungua malipo sasa.')
+                  navigate(`/buyer/orders?payOrder=${matchedOrder.id}`)
+                }
+              })
+              .catch(() => {
+                toast.success('Umeshinda mnada. Nenda Orders ukamilishe malipo.')
+              })
+          }
+
+          return auctions
+        })
         syncServerOffset(auctions)
       }
     }
 
     return () => socket.close()
-  }, [])
+  }, [currentUsername, navigate])
 
   useEffect(() => {
     const interval = window.setInterval(() => {
