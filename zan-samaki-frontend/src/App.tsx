@@ -1,15 +1,20 @@
-import { useState, useEffect } from 'react'
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
-import { Shield, Fish, ShoppingCart, Home, Package, Radio } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { Fish, Shield, ShoppingCart } from 'lucide-react'
 import toast from 'react-hot-toast'
+import Swal from 'sweetalert2'
 import AuthPage from '@/pages/AuthPage'
 import FisherDashboard from '@/pages/FisherDashboard'
 import BuyerDashboard from '@/pages/BuyerDashboard'
 import BuyerOrdersPage from '@/pages/BuyerOrdersPage'
 import BuyerLivePage from '@/pages/BuyerLivePage'
 import AdminDashboard from '@/pages/AdminDashboard'
+import SettingsPage from '@/pages/SettingsPage'
 import Layout from '@/components/Layout'
-import Navbar from '@/components/Navbar'
+import PublicNavbar from '@/components/PublicNavbar'
+import FisherNavbar from '@/components/FisherNavbar'
+import BuyerNavbar from '@/components/BuyerNavbar'
+import AdminNavbar from '@/components/AdminNavbar'
 import LoginModal from '@/components/LoginModal'
 
 interface AppUser {
@@ -17,98 +22,211 @@ interface AppUser {
   role: string
 }
 
+type UserRole = 'fisher' | 'buyer' | 'admin'
+
+const getDashboardPath = (role: string) => {
+  if (role === 'fisher') return '/fisher'
+  if (role === 'buyer') return '/buyer'
+  if (role === 'admin') return '/admin'
+  return '/'
+}
+
+const getRoleLabel = (role: UserRole) => {
+  if (role === 'fisher') return 'Mvuvi'
+  if (role === 'buyer') return 'Mnunuzi'
+  return 'Admin'
+}
+
 const App = () => {
   const [user, setUser] = useState<AppUser | null>(null)
   const [role, setRole] = useState('')
+  const [adminSidebarOpen, setAdminSidebarOpen] = useState(false)
   const [showLogin, setShowLogin] = useState(false)
+  const [loginMode, setLoginMode] = useState<'login' | 'register'>('login')
+  const [selectedRole, setSelectedRole] = useState<UserRole>('buyer')
   const navigate = useNavigate()
 
   useEffect(() => {
-    // Check if user is logged in
     const token = localStorage.getItem('token')
+
     if (token) {
-      // Fetch user info
-      fetchUser()
+      void fetchUser()
     }
   }, [])
 
   const fetchUser = async () => {
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('/api/users/', {
+      const res = await fetch('/api/users/me/', {
         headers: { Authorization: `Bearer ${token}` }
       })
+
       if (res.ok) {
-        const userData = await res.json()
-        setUser(userData[0])
-        setRole(userData[0]?.role || '')
+        const currentUser = await res.json()
+        setUser(currentUser)
+        setRole(currentUser?.role || '')
+        return currentUser
       }
     } catch (err) {
       localStorage.removeItem('token')
     }
+
+    return null
   }
 
-  const logout = () => {
+  const logout = async () => {
+    const result = await Swal.fire({
+      title: 'Confirm Logout',
+      text: 'Are you sure you want to logout?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#0284c7',
+      cancelButtonColor: '#94a3b8',
+      confirmButtonText: 'Yes, logout',
+      cancelButtonText: 'Cancel',
+      reverseButtons: true
+    })
+
+    if (!result.isConfirmed) {
+      return
+    }
+
     localStorage.removeItem('token')
     setUser(null)
     setRole('')
+    setAdminSidebarOpen(false)
     navigate('/')
-    toast.success('Umetoka! 👋')
+    toast.success('Umetoka!')
   }
 
-  const navItems = [
-    ...(!user ? [{ name: 'Nyumbani', icon: Home, href: '/' }] : []),
-    ...(role === 'fisher' ? [{ name: 'Dashibodi ya Mvuvi', icon: Fish, href: '/fisher' }] : []),
-    ...(role === 'buyer'
-      ? [
-          { name: 'Soko', icon: ShoppingCart, href: '/buyer' },
-          { name: 'Order', icon: Package, href: '/buyer/orders' },
-          { name: 'Live', icon: Radio, href: '/buyer/live' },
-        ]
-      : []),
-    ...(role === 'admin' ? [{ name: 'Admin', icon: Shield, href: '/admin' }] : []),
-  ]
+  const handleLoginSuccess = async (expectedRole: UserRole) => {
+    const loggedInUser = await fetchUser()
+
+    if (loggedInUser?.role) {
+      if (loggedInUser.role !== expectedRole) {
+        localStorage.removeItem('token')
+        setUser(null)
+        setRole('')
+        toast.error(`This account belongs to ${getRoleLabel(loggedInUser.role)}. Please use the ${getRoleLabel(loggedInUser.role)} login form.`)
+        return false
+      }
+
+      navigate(getDashboardPath(loggedInUser.role))
+      return true
+    }
+
+    return false
+  }
+
+  const openRoleLogin = (targetRole: UserRole) => {
+    setLoginMode('login')
+    setSelectedRole(targetRole)
+    setShowLogin(true)
+  }
+
+  const handleRoleAction = (targetRole: UserRole) => {
+    if (user) {
+      if (role === targetRole) {
+        navigate(getDashboardPath(targetRole))
+        return
+      }
+
+      toast.error(`This option is only for ${targetRole === 'fisher' ? 'fishermen' : targetRole === 'buyer' ? 'buyers' : 'admins'}.`)
+      return
+    }
+
+    setLoginMode(targetRole === 'admin' ? 'login' : 'register')
+    setSelectedRole(targetRole)
+    setShowLogin(true)
+  }
+
+  const renderNavbar = () => {
+    if (!user) {
+      return <PublicNavbar onLogin={openRoleLogin} />
+    }
+
+    if (role === 'fisher') {
+      return <FisherNavbar username={user.username} onLogout={logout} />
+    }
+
+    if (role === 'buyer') {
+      return <BuyerNavbar username={user.username} onLogout={logout} />
+    }
+
+    if (role === 'admin') {
+      return <AdminNavbar username={user.username} onLogout={logout} onOpenSidebar={() => setAdminSidebarOpen(true)} />
+    }
+
+    return <PublicNavbar onLogin={openRoleLogin} />
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-ocean-50 to-blue-50">
-      <Navbar 
-        user={user} 
-        navItems={navItems}
-        onLogin={() => setShowLogin(true)}
-        onLogout={logout}
-      />
-      
+      {renderNavbar()}
+
       <Routes>
-        <Route path="/" element={<Layout><HomePage onLogin={() => setShowLogin(true)} /></Layout>} />
+        <Route
+          path="/"
+          element={<Layout><HomePage onRoleAction={handleRoleAction} /></Layout>}
+        />
         <Route path="/auth" element={!user ? <AuthPage setUser={setUser} setRole={setRole} /> : <Navigate to="/" />} />
         <Route path="/fisher" element={role === 'fisher' ? <Layout><FisherDashboard /></Layout> : <Navigate to="/" />} />
         <Route path="/buyer" element={role === 'buyer' ? <Layout><BuyerDashboard /></Layout> : <Navigate to="/" />} />
         <Route path="/buyer/orders" element={role === 'buyer' ? <Layout><BuyerOrdersPage /></Layout> : <Navigate to="/" />} />
         <Route path="/buyer/live" element={role === 'buyer' ? <Layout><BuyerLivePage /></Layout> : <Navigate to="/" />} />
-        <Route path="/admin" element={role === 'admin' ? <Layout><AdminDashboard /></Layout> : <Navigate to="/" />} />
+        <Route
+          path="/admin"
+          element={
+            role === 'admin'
+              ? <Layout><AdminDashboard isSidebarOpen={adminSidebarOpen} onCloseSidebar={() => setAdminSidebarOpen(false)} initialSection="overview" /></Layout>
+              : <Navigate to="/" />
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            user
+              ? (
+                role === 'admin'
+                  ? <Layout><AdminDashboard isSidebarOpen={adminSidebarOpen} onCloseSidebar={() => setAdminSidebarOpen(false)} initialSection="settings" /></Layout>
+                  : <Layout><SettingsPage username={user.username} role={role} /></Layout>
+              )
+              : <Navigate to="/" />
+          }
+        />
       </Routes>
 
-      <LoginModal isOpen={showLogin} onClose={() => setShowLogin(false)} onSuccess={fetchUser} />
+      <LoginModal
+        isOpen={showLogin}
+        onClose={() => setShowLogin(false)}
+        onSuccess={handleLoginSuccess}
+        initialMode={loginMode}
+        initialRole={selectedRole}
+      />
     </div>
   )
 }
 
-const HomePage = ({ onLogin }: { onLogin: () => void }) => (
+const HomePage = ({
+  onRoleAction
+}: {
+  onRoleAction: (role: UserRole) => void
+}) => (
   <div className="max-w-7xl mx-auto px-4 py-20">
     <div className="text-center mb-20">
       <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-ocean-600 to-blue-600 bg-clip-text text-transparent mb-6">
-        🐟 ZanSamaki Fresh
+        ZanSamaki Fresh
       </h1>
       <p className="text-xl md:text-2xl text-gray-700 mb-8 max-w-2xl mx-auto">
-        Samaki safi moja kwa moja kutoka kwa wavuvi wa Zanzibar. 
+        Samaki safi moja kwa moja kutoka kwa wavuvi wa Zanzibar.
         Punguza upotevu wa mazao kwa sanduku la baridi la solar!
       </p>
       <div className="flex flex-col sm:flex-row gap-4 justify-center">
-        <button 
-          onClick={onLogin}
+        <button
+          onClick={() => document.getElementById('login-sections')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
           className="bg-ocean-600 text-white px-8 py-4 rounded-xl text-lg font-semibold hover:bg-ocean-700 transition-all shadow-xl"
         >
-          Anza Sasa
+          Chagua Sehemu Yako
         </button>
         <button className="border-2 border-ocean-600 text-ocean-600 px-8 py-4 rounded-xl text-lg font-semibold hover:bg-ocean-600 hover:text-white transition-all">
           Angalia Video
@@ -116,13 +234,13 @@ const HomePage = ({ onLogin }: { onLogin: () => void }) => (
       </div>
     </div>
 
-    <div className="grid md:grid-cols-3 gap-8 mt-20">
+    <div id="login-sections" className="grid md:grid-cols-3 gap-8 mt-20 scroll-mt-24">
       <div className="bg-white/70 backdrop-blur-sm p-8 rounded-2xl shadow-xl border border-white/50">
         <Fish className="w-12 h-12 text-ocean-600 mx-auto mb-4" />
         <h3 className="text-2xl font-bold mb-4 text-center">Mvuvi</h3>
         <p className="text-gray-600 mb-6 text-center">Pakia uvuvi wako na upate bei bora haraka!</p>
-        <button 
-          onClick={onLogin}
+        <button
+          onClick={() => onRoleAction('fisher')}
           className="w-full bg-ocean-600 text-white py-3 rounded-xl font-semibold hover:bg-ocean-700"
         >
           Kuwa Mvuvi
@@ -132,8 +250,8 @@ const HomePage = ({ onLogin }: { onLogin: () => void }) => (
         <ShoppingCart className="w-12 h-12 text-ocean-600 mx-auto mb-4" />
         <h3 className="text-2xl font-bold mb-4 text-center">Nunua</h3>
         <p className="text-gray-600 mb-6 text-center">Pata samaki safi na ubadilishe haraka!</p>
-        <button 
-          onClick={onLogin}
+        <button
+          onClick={() => onRoleAction('buyer')}
           className="w-full bg-ocean-600 text-white py-3 rounded-xl font-semibold hover:bg-ocean-700"
         >
           Nunua Sasa
@@ -143,8 +261,8 @@ const HomePage = ({ onLogin }: { onLogin: () => void }) => (
         <Shield className="w-12 h-12 text-ocean-600 mx-auto mb-4" />
         <h3 className="text-2xl font-bold mb-4 text-center">Admin</h3>
         <p className="text-gray-600 mb-6 text-center">Dhibiti uvuvi na ruhusu listings</p>
-        <button 
-          onClick={onLogin}
+        <button
+          onClick={() => onRoleAction('admin')}
           className="w-full bg-ocean-600 text-white py-3 rounded-xl font-semibold hover:bg-ocean-700"
         >
           Admin Panel
@@ -155,4 +273,3 @@ const HomePage = ({ onLogin }: { onLogin: () => void }) => (
 )
 
 export default App
-

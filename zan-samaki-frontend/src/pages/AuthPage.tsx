@@ -8,13 +8,20 @@ interface AuthPageProps {
   setRole: (role: string) => void
 }
 
+const getDashboardPath = (role: string) => {
+  if (role === 'fisher') return '/fisher'
+  if (role === 'buyer') return '/buyer'
+  if (role === 'admin') return '/admin'
+  return '/'
+}
+
 const AuthPage = ({ setUser, setRole }: AuthPageProps) => {
   const [isLogin, setIsLogin] = useState(true)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
-    role: 'fisher' as 'fisher' | 'buyer' | 'admin'
+    role: 'fisher' as 'fisher' | 'buyer'
   })
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
@@ -47,7 +54,7 @@ const AuthPage = ({ setUser, setRole }: AuthPageProps) => {
         setUser(data.user)
         setRole(data.user.role)
         toast.success(isLogin ? 'Umeingia!' : 'Akaunti yako imeundwa!')
-        navigate('/')
+        navigate(getDashboardPath(data.user.role))
       } else {
         toast.error(data.detail || data.message || 'Hitilafu imetokea')
       }
@@ -88,18 +95,6 @@ const AuthPage = ({ setUser, setRole }: AuthPageProps) => {
                     required
                   />
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Jukumu</label>
-                <select
-                  value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-ocean-500 focus:border-transparent bg-white/50"
-                >
-                  <option value="fisher">Mvuvi</option>
-                  <option value="buyer">Mnunuzi</option>
-                  <option value="admin">Msimamizi</option>
-                </select>
               </div>
             </>
           )}
