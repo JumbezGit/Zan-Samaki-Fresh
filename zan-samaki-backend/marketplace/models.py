@@ -67,3 +67,39 @@ class CoolBoxRental(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2, default=3000)
     status = models.CharField(max_length=20, default='requested')
 
+class Auction(models.Model):
+    STATUS_CHOICES = [
+        ('open', 'Open'),
+        ('sold', 'Sold'),
+        ('closed', 'Closed'),
+    ]
+
+    catch = models.ForeignKey(FishCatch, on_delete=models.CASCADE, related_name='auctions')
+    seller = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_auctions')
+    initial_price = models.DecimalField(max_digits=10, decimal_places=2)
+    current_price = models.DecimalField(max_digits=10, decimal_places=2)
+    increment_gap = models.DecimalField(max_digits=10, decimal_places=2, default=1000)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
+    highest_bidder = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='won_auctions'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_bid_at = models.DateTimeField(null=True, blank=True)
+    closed_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Auction {self.catch.title} - {self.status}"
+
+class AuctionBid(models.Model):
+    auction = models.ForeignKey(Auction, on_delete=models.CASCADE, related_name='bids')
+    buyer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='auction_bids')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.buyer.username} - {self.amount}"
+

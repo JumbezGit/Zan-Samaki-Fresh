@@ -8,10 +8,12 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from decimal import Decimal, InvalidOperation
 from django.utils import timezone
-from .models import FishCatch, Order, CoolBoxRental
+from datetime import timedelta
+from .models import FishCatch, Order, CoolBoxRental, Auction, AuctionBid
 from .serializers import (
     FishCatchSerializer, CreateFishCatchSerializer, 
-    OrderSerializer, CoolBoxRentalSerializer, UserSerializer, UserCreateSerializer
+    OrderSerializer, CoolBoxRentalSerializer, UserSerializer, UserCreateSerializer,
+    AuctionSerializer, CreateAuctionSerializer
 )
 
 User = get_user_model()
@@ -28,6 +30,37 @@ def _issue_auth_token(user):
         return str(RefreshToken.for_user(user).access_token)
     except ModuleNotFoundError:
         return f'dev-token-{user.id}'
+
+
+def _settle_expired_auctions():
+    cutoff = timezone.now() - timedelta(minutes=1)
+    auctions = Auction.objects.select_related('catch', 'highest_bidder', 'seller').filter(
+        status='open',
+        last_bid_at__isnull=False,
+        last_bid_at__lte=cutoff,
+    )
+
+    for auction in auctions:
+        if auction.highest_bidder and auction.catch.quantity > 0:
+            Order.objects.create(
+                buyer=auction.highest_bidder,
+                catch=auction.catch,
+                quantity=auction.catch.quantity,
+                total_price=auction.current_price * auction.catch.quantity,
+                payment_method='tigo_pesa',
+                status='paid',
+            )
+            auction.catch.quantity = Decimal('0')
+            auction.catch.status = 'sold'
+            auction.catch.save(update_fields=['quantity', 'status'])
+            auction.status = 'sold'
+        else:
+            auction.catch.status = 'available'
+            auction.catch.save(update_fields=['status'])
+            auction.status = 'closed'
+
+        auction.closed_at = timezone.now()
+        auction.save(update_fields=['status', 'closed_at'])
 
 
 class RegisterView(APIView):
@@ -222,4 +255,87 @@ class CoolBoxRentalViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+
+class AuctionViewSet(viewsets.ModelViewSet):
+    queryset = Auction.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action in ['create', 'update', 'partial_update']:
+            return CreateAuctionSerializer
+        return AuctionSerializer
+
+    def get_queryset(self):
+        _settle_expired_auctions()
+        queryset = Auction.objects.select_related('catch', 'seller', 'highest_bidder').prefetch_related('bids__buyer').order_by('-created_at')
+
+        if self.request.user.role == 'fisher':
+            return queryset.filter(seller=self.request.user)
+        return queryset
+
+    def perform_create(self, serializer):
+        catch = serializer.validated_data['catch']
+
+        if self.request.user.role != 'fisher':
+            raise permissions.PermissionDenied('Mnada huu ni kwa mvuvi tu.')
+
+        if catch.user_id != self.request.user.id:
+            raise permissions.PermissionDenied('Unaweza kuweka mnada kwa samaki wako tu.')
+
+        if catch.status != 'available' or catch.quantity <= 0:
+            raise permissions.PermissionDenied('Samaki hawa hawapo tayari kwa mnada.')
+
+        if Auction.objects.filter(catch=catch, status='open').exists():
+            raise permissions.PermissionDenied('Samaki hawa tayari wako kwenye mnada unaoendelea.')
+
+        serializer.save(
+            seller=self.request.user,
+            current_price=serializer.validated_data['initial_price'],
+        )
+        catch.status = 'reserved'
+        catch.save(update_fields=['status'])
+
+    @action(detail=True, methods=['post'])
+    def bid(self, request, pk=None):
+        _settle_expired_auctions()
+
+        with transaction.atomic():
+            auction = Auction.objects.select_for_update().select_related('catch', 'seller', 'highest_bidder').get(pk=pk)
+
+            if request.user.role != 'buyer':
+                return Response({'detail': 'Buyer tu anaweza kushiriki mnada.'}, status=status.HTTP_403_FORBIDDEN)
+
+            if auction.status != 'open':
+                return Response({'detail': 'Mnada huu umefungwa.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            if auction.seller_id == request.user.id:
+                return Response({'detail': 'Huwezi kubid mnada wako mwenyewe.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            recent_competitor_exists = auction.bids.filter(
+                created_at__gte=timezone.now() - timedelta(minutes=1)
+            ).exclude(buyer=request.user).exists()
+
+            next_amount = auction.current_price
+            if recent_competitor_exists or auction.highest_bidder_id:
+                next_amount = auction.current_price + auction.increment_gap
+
+            bid = AuctionBid.objects.create(
+                auction=auction,
+                buyer=request.user,
+                amount=next_amount,
+            )
+
+            auction.current_price = next_amount
+            auction.highest_bidder = request.user
+            auction.last_bid_at = timezone.now()
+            auction.save(update_fields=['current_price', 'highest_bidder', 'last_bid_at'])
+
+        return Response(
+            {
+                'detail': 'Bid yako imepokelewa.',
+                'auction': AuctionSerializer(auction, context={'request': request}).data,
+                'bid_amount': str(bid.amount),
+            }
+        )
 

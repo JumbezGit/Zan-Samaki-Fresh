@@ -1,97 +1,131 @@
+import { useEffect, useState } from 'react'
 import { Activity, Clock3, Gavel, Radio, Users, Waves } from 'lucide-react'
+import toast from 'react-hot-toast'
+
+interface LiveAuction {
+  id: number
+  current_price: string
+  increment_gap: string
+  status: string
+  bidder_count: number
+  last_bid_at: string | null
+  seller: {
+    username: string
+  }
+  highest_bidder: {
+    username: string
+  } | null
+  catch: {
+    title: string
+    location: string
+    quantity: string
+  }
+}
 
 const liveFeed = [
   {
     id: 1,
-    title: 'Dagaa mpya zimewasili kutoka Stone Town',
-    time: 'Dakika 2 zilizopita',
-    detail: 'Samaki 120kg zimeongezwa sokoni na ziko tayari kuuzwa.',
+    title: 'Buyer anaweza kujiunga na mnada papo hapo',
+    time: 'Sasa hivi',
+    detail: 'Mara buyer akibonyeza bei ya sasa, mfumo utamweka kama bidder wa juu wa muda huo.',
   },
   {
     id: 2,
-    title: 'Mvuvi mpya yuko live kutoka Nungwi',
-    time: 'Dakika 7 zilizopita',
-    detail: 'Anaonyesha mzigo wa leo na bei za mwanzo kwa wanunuzi.',
+    title: 'Bei huongezeka kwa gap ukiwa na buyers wengi',
+    time: 'Ndani ya dakika 1',
+    detail: 'Buyer wawili au zaidi wakichagua mnada ndani ya dakika 1, bei itapanda kwa increment gap ya mvuvi.',
   },
   {
     id: 3,
-    title: 'Order yako ORD-201 imeanza kusafirishwa',
-    time: 'Dakika 11 zilizopita',
-    detail: 'Dereva yuko njiani na muda wa kufika umesasishwa.',
-  },
-]
-
-const liveAuctions = [
-  {
-    id: 1,
-    fish: 'Changu Kubwa',
-    fisher: 'Ali Nungwi',
-    location: 'Nungwi',
-    currentBid: 'TZS 24,000/kg',
-    timeLeft: 'Dakika 08',
-    bidders: 12,
-  },
-  {
-    id: 2,
-    fish: 'Pweza Fresh',
-    fisher: 'Salma Kizimkazi',
-    location: 'Kizimkazi',
-    currentBid: 'TZS 18,500/kg',
-    timeLeft: 'Dakika 13',
-    bidders: 7,
-  },
-  {
-    id: 3,
-    fish: "Ng'ongo Premium",
-    fisher: 'Juma Matemwe',
-    location: 'Matemwe',
-    currentBid: 'TZS 21,000/kg',
-    timeLeft: 'Dakika 05',
-    bidders: 15,
+    title: 'Mnada huuzwa kwa buyer wa mwisho akibaki peke yake',
+    time: 'Baada ya dakika 1',
+    detail: 'Kama hakuna bidder mwingine ndani ya dakika 1 baada ya bid ya mwisho, mfumo hufunga mnada na ku-create order kwa winner.',
   },
 ]
 
 const BuyerLivePage = () => {
+  const [liveAuctions, setLiveAuctions] = useState<LiveAuction[]>([])
+
+  const fetchAuctions = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/auctions/', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await res.json()
+      setLiveAuctions(Array.isArray(data) ? data.filter((item) => item.status === 'open') : [])
+    } catch (error) {
+      toast.error('Tatizo la kupakia minada')
+    }
+  }
+
+  useEffect(() => {
+    void fetchAuctions()
+  }, [])
+
+  const placeBid = async (auctionId: number) => {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/auctions/${auctionId}/bid/`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        toast.error(data?.detail || 'Imeshindikana kushiriki mnada')
+        return
+      }
+
+      setLiveAuctions((currentAuctions) =>
+        currentAuctions.map((auction) => (auction.id === auctionId ? data.auction : auction))
+      )
+      toast.success(`Bid imewekwa: TZS ${Number(data.bid_amount).toLocaleString()}`)
+    } catch (error) {
+      toast.error('Tatizo la kubid mnada')
+    }
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-12">
-      <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-ocean-700 via-cyan-700 to-emerald-600 text-white p-8 md:p-10 shadow-2xl mb-10">
+      <div className="relative mb-10 overflow-hidden rounded-[2rem] bg-gradient-to-br from-ocean-700 via-cyan-700 to-emerald-600 p-8 text-white shadow-2xl md:p-10">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.22),transparent_30%)]" />
         <div className="relative">
-          <p className="uppercase tracking-[0.25em] text-sm text-cyan-100 mb-3">Live Buyer Feed</p>
-          <h1 className="text-4xl md:text-5xl font-bold flex items-center gap-3 mb-4">
+          <p className="mb-3 text-sm uppercase tracking-[0.25em] text-cyan-100">Live Buyer Feed</p>
+          <h1 className="mb-4 flex items-center gap-3 text-4xl font-bold md:text-5xl">
             <Radio className="w-10 h-10" />
             <span>Live Market</span>
           </h1>
-          <p className="text-lg text-cyan-50 max-w-2xl">
-            Ona mabadiliko ya soko kwa muda halisi, taarifa za oda, na samaki wapya wanaowasili.
+          <p className="max-w-3xl text-lg text-cyan-50">
+            Hapa buyer anaona minada inayoendelea, bei ya sasa, gap ya kupanda, na anaweza kushiriki moja kwa moja.
           </p>
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-[1.2fr_0.8fr] gap-6">
+      <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="space-y-5">
-          <div className="bg-white/75 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg p-6">
-            <div className="flex items-center justify-between gap-4 mb-5">
+          <div className="rounded-2xl border border-white/50 bg-white/75 p-6 shadow-lg backdrop-blur-sm">
+            <div className="mb-5 flex items-center justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.2em] text-ocean-600">Live Auction</p>
-                <h2 className="text-3xl font-bold text-gray-900 mt-2">Minada Inayoendelea</h2>
+                <h2 className="mt-2 text-3xl font-bold text-gray-900">Minada Inayoendelea</h2>
               </div>
               <div className="rounded-full bg-red-100 px-4 py-2 text-sm font-semibold text-red-700">
                 Live Now
               </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid gap-4 md:grid-cols-2">
               {liveAuctions.map((auction) => (
                 <div
                   key={auction.id}
                   className="rounded-2xl border border-ocean-100 bg-gradient-to-br from-white to-ocean-50 p-5 shadow-sm"
                 >
-                  <div className="flex items-start justify-between gap-3 mb-4">
+                  <div className="mb-4 flex items-start justify-between gap-3">
                     <div>
-                      <h3 className="text-xl font-bold text-slate-900">{auction.fish}</h3>
-                      <p className="text-sm text-slate-500 mt-1">
-                        {auction.fisher} • {auction.location}
+                      <h3 className="text-xl font-bold text-slate-900">{auction.catch.title}</h3>
+                      <p className="mt-1 text-sm text-slate-500">
+                        {auction.seller.username} • {auction.catch.location}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-700">
@@ -100,26 +134,39 @@ const BuyerLivePage = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 mb-5">
-                    <div className="rounded-xl bg-white p-4 border border-slate-100">
+                  <div className="mb-5 grid grid-cols-2 gap-3">
+                    <div className="rounded-xl border border-slate-100 bg-white p-4">
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Bei ya sasa</p>
-                      <p className="text-lg font-bold text-ocean-700 mt-1">{auction.currentBid}</p>
+                      <p className="mt-1 text-lg font-bold text-ocean-700">
+                        TZS {Number(auction.current_price).toLocaleString()}/kg
+                      </p>
                     </div>
-                    <div className="rounded-xl bg-white p-4 border border-slate-100">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Muda uliobaki</p>
-                      <p className="text-lg font-bold text-red-600 mt-1">{auction.timeLeft}</p>
+                    <div className="rounded-xl border border-slate-100 bg-white p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Gap ya bei</p>
+                      <p className="mt-1 text-lg font-bold text-red-600">
+                        +TZS {Number(auction.increment_gap).toLocaleString()}
+                      </p>
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-sm text-slate-600">
                       <Users className="w-4 h-4 text-ocean-600" />
-                      <span>{auction.bidders} buyers wanafuatilia</span>
+                      <span>{auction.bidder_count} buyers wanafuatilia</span>
                     </div>
-                    <button className="rounded-xl bg-ocean-600 px-4 py-2 font-semibold text-white hover:bg-ocean-700 transition-colors">
-                      Tazama Mnada
+                    <button
+                      onClick={() => placeBid(auction.id)}
+                      className="rounded-xl bg-ocean-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-ocean-700"
+                    >
+                      Chagua Bei
                     </button>
                   </div>
+
+                  {auction.highest_bidder && (
+                    <p className="mt-3 text-sm font-medium text-emerald-700">
+                      Kiongozi wa sasa: {auction.highest_bidder.username}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -128,48 +175,55 @@ const BuyerLivePage = () => {
           {liveFeed.map((item) => (
             <div
               key={item.id}
-              className="bg-white/75 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg p-6"
+              className="rounded-2xl border border-white/50 bg-white/75 p-6 shadow-lg backdrop-blur-sm"
             >
-              <div className="flex items-start justify-between gap-4 mb-3">
+              <div className="mb-3 flex items-start justify-between gap-4">
                 <h2 className="text-2xl font-bold text-gray-900">{item.title}</h2>
-                <span className="shrink-0 flex items-center gap-2 text-sm text-ocean-700 font-semibold">
+                <span className="flex shrink-0 items-center gap-2 text-sm font-semibold text-ocean-700">
                   <Clock3 className="w-4 h-4" />
                   {item.time}
                 </span>
               </div>
-              <p className="text-gray-600 leading-7">{item.detail}</p>
+              <p className="leading-7 text-gray-600">{item.detail}</p>
             </div>
           ))}
         </div>
 
-        <div className="bg-white/75 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg p-6 h-fit">
-          <h2 className="text-2xl font-bold mb-5 flex items-center gap-2">
+        <div className="h-fit rounded-2xl border border-white/50 bg-white/75 p-6 shadow-lg backdrop-blur-sm">
+          <h2 className="mb-5 flex items-center gap-2 text-2xl font-bold">
             <Activity className="w-6 h-6 text-emerald-600" />
             Muda Halisi
           </h2>
 
           <div className="space-y-4">
             <div className="rounded-2xl bg-emerald-50 p-5">
-              <p className="text-sm text-emerald-700 font-semibold mb-1">Listings mpya leo</p>
-              <p className="text-3xl font-bold text-emerald-900">18</p>
+              <p className="mb-1 text-sm font-semibold text-emerald-700">Minada open sasa</p>
+              <p className="text-3xl font-bold text-emerald-900">{liveAuctions.length}</p>
             </div>
             <div className="rounded-2xl bg-cyan-50 p-5">
-              <p className="text-sm text-cyan-700 font-semibold mb-1">Wavuvi walio live</p>
-              <p className="text-3xl font-bold text-cyan-900">6</p>
+              <p className="mb-1 text-sm font-semibold text-cyan-700">Buyers waliopo live</p>
+              <p className="text-3xl font-bold text-cyan-900">
+                {liveAuctions.reduce((total, auction) => total + auction.bidder_count, 0)}
+              </p>
             </div>
             <div className="rounded-2xl bg-ocean-50 p-5">
-              <p className="text-sm text-ocean-700 font-semibold mb-1">Oda zinazotumwa</p>
-              <p className="text-3xl font-bold text-ocean-900">9</p>
+              <p className="mb-1 text-sm font-semibold text-ocean-700">Bei ya juu zaidi</p>
+              <p className="text-3xl font-bold text-ocean-900">
+                TZS {liveAuctions.length > 0
+                  ? Math.max(...liveAuctions.map((auction) => Number(auction.current_price))).toLocaleString()
+                  : '0'}
+              </p>
             </div>
           </div>
 
           <div className="mt-6 rounded-2xl bg-gradient-to-r from-ocean-600 to-cyan-600 p-5 text-white">
-            <div className="flex items-center gap-3 mb-2">
+            <div className="mb-2 flex items-center gap-3">
               <Waves className="w-5 h-5" />
-              <p className="font-semibold">Soko linaendelea vizuri</p>
+              <p className="font-semibold">Rule ya mnada</p>
             </div>
             <p className="text-sm text-cyan-50">
-              Taarifa hizi ni za mwonekano wa buyer live page na zinaweza kuunganishwa na data halisi baadaye.
+              Buyer wawili au zaidi wakibofya mnada ndani ya dakika 1, bei inapanda kwa increment gap.
+              Ikiwa hakuna bidder mwingine ndani ya dakika 1, mfumo humaliza mnada kwa buyer wa mwisho.
             </p>
           </div>
         </div>

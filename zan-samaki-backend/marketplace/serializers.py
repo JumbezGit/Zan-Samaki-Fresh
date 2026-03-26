@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import FishCatch, Order, CoolBoxRental
+from .models import FishCatch, Order, CoolBoxRental, Auction, AuctionBid
 
 User = get_user_model()
 
@@ -55,6 +55,32 @@ class CreateOrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = ['catch', 'quantity', 'payment_method']
+
+class AuctionBidSerializer(serializers.ModelSerializer):
+    buyer = UserSerializer(read_only=True)
+
+    class Meta:
+        model = AuctionBid
+        fields = '__all__'
+
+class AuctionSerializer(serializers.ModelSerializer):
+    seller = UserSerializer(read_only=True)
+    highest_bidder = UserSerializer(read_only=True)
+    catch = FishCatchSerializer(read_only=True)
+    bids = AuctionBidSerializer(read_only=True, many=True)
+    bidder_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Auction
+        fields = '__all__'
+
+    def get_bidder_count(self, obj):
+        return obj.bids.values('buyer_id').distinct().count()
+
+class CreateAuctionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Auction
+        fields = ['catch', 'initial_price', 'increment_gap']
 
 class CoolBoxRentalSerializer(serializers.ModelSerializer):
     class Meta:
