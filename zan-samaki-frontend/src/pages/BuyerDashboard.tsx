@@ -21,19 +21,6 @@ interface PurchaseInvoice {
   location: string
 }
 
-const demoCatch: Catch = {
-  id: 0,
-  title: 'Dagaa Fresh Demo',
-  fish_type: 'Dagaa',
-  quantity: 12,
-  price_per_kg: 8500,
-  photo: '',
-  location: 'Stone Town',
-  user: {
-    username: 'Demo Fisher'
-  }
-}
-
 const BuyerDashboard = () => {
   const [searchParams] = useSearchParams()
   const [catches, setCatches] = useState<Catch[]>([])
@@ -234,17 +221,6 @@ const BuyerDashboard = () => {
         </h1>
         <div className="text-2xl font-bold text-emerald-600">
           {filteredCatches.length} patokanayo
-        </div>
-      </div>
-
-      <div className="mb-10">
-        <div className="mb-4">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-ocean-600">Demo Card</p>
-          <h2 className="text-2xl font-bold text-slate-900">Muonekano wa fish card</h2>
-        </div>
-
-        <div className="max-w-sm">
-          <FishCard item={demoCatch} onSelect={openCatchDetails} />
         </div>
       </div>
 
