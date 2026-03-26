@@ -14,26 +14,7 @@ const PublicNavbar = ({ onLogin }: PublicNavbarProps) => {
         <div className="flex justify-between items-center h-16">
           <BrandLogo />
 
-          <div className="hidden md:flex items-center space-x-4">
-            <button
-              onClick={() => onLogin('fisher')}
-              className="rounded-xl border border-ocean-200 px-4 py-2 font-semibold text-ocean-700 transition-all hover:bg-ocean-50"
-            >
-              Mvuvi Ingia
-            </button>
-            <button
-              onClick={() => onLogin('buyer')}
-              className="rounded-xl border border-ocean-200 px-4 py-2 font-semibold text-ocean-700 transition-all hover:bg-ocean-50"
-            >
-              Mnunuzi Ingia
-            </button>
-            <button
-              onClick={() => onLogin('admin')}
-              className="bg-ocean-600 text-white px-5 py-2 rounded-xl font-semibold hover:bg-ocean-700 transition-all"
-            >
-              Admin Ingia
-            </button>
-          </div>
+
 
           <button className="md:hidden p-2" aria-label="Open menu">
             <Menu className="w-6 h-6" />
