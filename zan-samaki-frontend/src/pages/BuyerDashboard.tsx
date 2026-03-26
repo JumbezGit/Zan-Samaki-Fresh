@@ -167,6 +167,60 @@ const BuyerDashboard = () => {
     setPreviewInvoice(null)
   }, [purchaseQuantity, paymentMethod, selectedCatch?.id])
 
+  const printInvoice = (currentInvoice: PurchaseInvoice) => {
+    const printWindow = window.open('', '_blank', 'width=900,height=700')
+    if (!printWindow) {
+      toast.error('Imeshindikana kufungua print window')
+      return
+    }
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>${currentInvoice.invoice_number}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 32px; color: #0f172a; }
+            h1 { margin-bottom: 8px; }
+            .muted { color: #64748b; margin-bottom: 24px; }
+            .card { border: 1px solid #cbd5e1; border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+            .row { display: flex; justify-content: space-between; margin-bottom: 12px; gap: 16px; }
+            .label { color: #64748b; }
+            .value { font-weight: 700; }
+            .total { font-size: 20px; color: #047857; }
+          </style>
+        </head>
+        <body>
+          <h1>${currentInvoice.invoice_number}</h1>
+          <p class="muted">Imekamilika: ${new Date(currentInvoice.issued_at).toLocaleString()}</p>
+          <div class="card">
+            <div class="row"><span class="label">Buyer</span><span class="value">${currentInvoice.buyer_name}</span></div>
+            <div class="row"><span class="label">Mvuvi</span><span class="value">${currentInvoice.fisher_name}</span></div>
+            <div class="row"><span class="label">Samaki</span><span class="value">${currentInvoice.fish_title}</span></div>
+            <div class="row"><span class="label">Aina</span><span class="value">${currentInvoice.fish_type}</span></div>
+            <div class="row"><span class="label">Mahali</span><span class="value">${currentInvoice.location}</span></div>
+            <div class="row"><span class="label">Malipo</span><span class="value">${currentInvoice.payment_method}</span></div>
+          </div>
+          <div class="card">
+            <div class="row"><span class="label">Kiasi</span><span class="value">${currentInvoice.quantity} kg</span></div>
+            <div class="row"><span class="label">Bei kwa kilo</span><span class="value">TZS ${Number(currentInvoice.price_per_kg).toLocaleString()}</span></div>
+            <div class="row"><span class="label total">Jumla</span><span class="value total">TZS ${Number(currentInvoice.total_price).toLocaleString()}</span></div>
+          </div>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
+    printWindow.focus()
+    printWindow.print()
+  }
+
+  useEffect(() => {
+    if (invoice) {
+      window.setTimeout(() => {
+        printInvoice(invoice)
+      }, 250)
+    }
+  }, [invoice])
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-12">
       <div className="flex items-center justify-between mb-8">
@@ -393,12 +447,20 @@ const BuyerDashboard = () => {
               </div>
             </div>
 
-            <button
-              onClick={() => setInvoice(null)}
-              className="mt-6 w-full rounded-xl bg-ocean-600 px-6 py-3 font-semibold text-white transition-all hover:bg-ocean-700"
-            >
-              Funga Invoice
-            </button>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <button
+                onClick={() => printInvoice(invoice)}
+                className="flex-1 rounded-xl border border-ocean-200 px-6 py-3 font-semibold text-ocean-700 transition-all hover:bg-ocean-50"
+              >
+                Print Invoice
+              </button>
+              <button
+                onClick={() => setInvoice(null)}
+                className="flex-1 rounded-xl bg-ocean-600 px-6 py-3 font-semibold text-white transition-all hover:bg-ocean-700"
+              >
+                Funga Invoice
+              </button>
+            </div>
           </div>
         </div>
       )}
