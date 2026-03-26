@@ -5,6 +5,8 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import authenticate
 from django.contrib.auth import get_user_model
+from django.db import transaction
+from decimal import Decimal, InvalidOperation
 from .models import FishCatch, Order, CoolBoxRental
 from .serializers import (
     FishCatchSerializer, CreateFishCatchSerializer, 
@@ -131,17 +133,57 @@ class FishCatchViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def buy(self, request, pk=None):
-        catch = self.get_object()
-        order = Order.objects.create(
-            buyer=request.user,
-            catch=catch,
-            quantity=catch.quantity,
-            total_price=float(catch.quantity * catch.price_per_kg),
-            payment_method=request.data.get('payment_method', 'tigo_pesa')
+        with transaction.atomic():
+            catch = FishCatch.objects.select_for_update().get(pk=pk)
+
+            try:
+                requested_quantity = Decimal(str(request.data.get('quantity', '0')))
+            except (InvalidOperation, TypeError):
+                return Response(
+                    {'detail': 'Kiasi cha kilo si sahihi.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if requested_quantity <= 0:
+                return Response(
+                    {'detail': 'Kiasi cha kilo lazima kiwe zaidi ya sifuri.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if catch.status != 'available':
+                return Response(
+                    {'detail': 'Samaki hawa hawapo sokoni kwa sasa.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if requested_quantity > catch.quantity:
+                return Response(
+                    {'detail': f'Kilo zilizopo ni {catch.quantity} tu.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            total_price = requested_quantity * catch.price_per_kg
+            remaining_quantity = catch.quantity - requested_quantity
+
+            order = Order.objects.create(
+                buyer=request.user,
+                catch=catch,
+                quantity=requested_quantity,
+                total_price=total_price,
+                payment_method=request.data.get('payment_method', 'tigo_pesa')
+            )
+
+            catch.quantity = remaining_quantity
+            catch.status = 'sold' if remaining_quantity <= Decimal('0') else 'available'
+            catch.save(update_fields=['quantity', 'status'])
+
+        return Response(
+            {
+                **OrderSerializer(order).data,
+                'remaining_quantity': str(catch.quantity),
+                'catch_status': catch.status,
+            }
         )
-        catch.status = 'sold'
-        catch.save()
-        return Response(OrderSerializer(order).data)
 
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all()
