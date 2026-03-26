@@ -60,6 +60,36 @@ def _broadcast_auction_snapshot():
     )
 
 
+def _resolve_payment_method(request_data, default='tigo_pesa'):
+    payment_method = request_data.get('payment_method', default)
+    valid_methods = {choice[0] for choice in Order._meta.get_field('payment_method').choices}
+
+    if payment_method not in valid_methods:
+        return None, Response(
+            {'detail': 'Njia ya malipo si sahihi.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    return payment_method, None
+
+
+def _build_order_invoice(order, payment_method=None, status_override=None):
+    return {
+        'invoice_number': f'INV-{timezone.now().strftime("%Y%m%d")}-{order.id if order else "SIM"}',
+        'issued_at': timezone.localtime(order.created_at).isoformat() if order else timezone.localtime().isoformat(),
+        'buyer_name': order.buyer.username,
+        'fisher_name': order.catch.user.username,
+        'fish_title': order.catch.title,
+        'fish_type': order.catch.fish_type,
+        'quantity': str(order.quantity),
+        'price_per_kg': str(order.catch.price_per_kg),
+        'total_price': str(order.total_price),
+        'payment_method': payment_method or order.payment_method,
+        'status': status_override or order.status,
+        'location': order.catch.location,
+    }
+
+
 def _settle_expired_auctions():
     cutoff = timezone.now() - timedelta(minutes=1)
     auctions = Auction.objects.select_related('catch', 'highest_bidder', 'seller').filter(
@@ -78,7 +108,7 @@ def _settle_expired_auctions():
                 quantity=auction.catch.quantity,
                 total_price=auction.current_price * auction.catch.quantity,
                 payment_method='tigo_pesa',
-                status='paid',
+                status='pending',
             )
             auction.catch.quantity = Decimal('0')
             auction.catch.status = 'sold'
@@ -212,14 +242,9 @@ class FishCatchViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        payment_method = request_data.get('payment_method', 'tigo_pesa')
-        valid_methods = {choice[0] for choice in Order._meta.get_field('payment_method').choices}
-
-        if payment_method not in valid_methods:
-            return None, Response(
-                {'detail': 'Njia ya malipo si sahihi.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        payment_method, error_response = _resolve_payment_method(request_data)
+        if error_response:
+            return None, error_response
 
         return {
             'requested_quantity': requested_quantity,
@@ -229,20 +254,24 @@ class FishCatchViewSet(viewsets.ModelViewSet):
         }, None
 
     def _build_invoice_payload(self, catch, buyer, purchase_details, order=None, status_override=None):
-        return {
-            'invoice_number': f'INV-{timezone.now().strftime("%Y%m%d")}-{order.id if order else "SIM"}',
-            'issued_at': timezone.localtime(order.created_at).isoformat() if order else timezone.localtime().isoformat(),
-            'buyer_name': buyer.username,
-            'fisher_name': catch.user.username,
-            'fish_title': catch.title,
-            'fish_type': catch.fish_type,
-            'quantity': str(order.quantity if order else purchase_details['requested_quantity']),
-            'price_per_kg': str(catch.price_per_kg),
-            'total_price': str(order.total_price if order else purchase_details['total_price']),
-            'payment_method': order.payment_method if order else purchase_details['payment_method'],
-            'status': status_override or (order.status if order else 'simulated'),
-            'location': catch.location,
-        }
+        if order:
+            return _build_order_invoice(order, status_override=status_override)
+
+        preview_order = type(
+            'PreviewOrder',
+            (),
+            {
+                'id': None,
+                'created_at': timezone.now(),
+                'buyer': buyer,
+                'catch': catch,
+                'quantity': purchase_details['requested_quantity'],
+                'total_price': purchase_details['total_price'],
+                'payment_method': purchase_details['payment_method'],
+                'status': status_override or 'simulated',
+            },
+        )()
+        return _build_order_invoice(preview_order, status_override=status_override or 'simulated')
 
     def get_queryset(self):
         if self.request.user.is_authenticated and self.request.user.role == 'admin':
@@ -323,7 +352,54 @@ class OrderViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if self.request.user.role == 'admin':
             return Order.objects.select_related('buyer', 'catch', 'catch__user').order_by('-created_at')
-        return Order.objects.filter(buyer=self.request.user)
+        return Order.objects.select_related('buyer', 'catch', 'catch__user').filter(buyer=self.request.user).order_by('-created_at')
+
+    @action(detail=True, methods=['post'], url_path='payment-preview')
+    def payment_preview(self, request, pk=None):
+        order = self.get_object()
+
+        if request.user.role != 'buyer' or order.buyer_id != request.user.id:
+            return Response({'detail': 'Huna ruhusa ya kulipia order hii.'}, status=status.HTTP_403_FORBIDDEN)
+
+        payment_method, error_response = _resolve_payment_method(request.data, default=order.payment_method)
+        if error_response:
+            return error_response
+
+        return Response(
+            {
+                'simulation': {
+                    'can_proceed': order.status == 'pending',
+                    'message': 'Malipo yako yako tayari kuthibitishwa.' if order.status == 'pending' else 'Order hii tayari imelipwa.',
+                    'order_status': order.status,
+                },
+                'invoice': _build_order_invoice(order, payment_method=payment_method, status_override='simulated'),
+            }
+        )
+
+    @action(detail=True, methods=['post'])
+    def pay(self, request, pk=None):
+        order = self.get_object()
+
+        if request.user.role != 'buyer' or order.buyer_id != request.user.id:
+            return Response({'detail': 'Huna ruhusa ya kulipia order hii.'}, status=status.HTTP_403_FORBIDDEN)
+
+        if order.status != 'pending':
+            return Response({'detail': 'Order hii tayari imelipwa au imekamilika.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        payment_method, error_response = _resolve_payment_method(request.data, default=order.payment_method)
+        if error_response:
+            return error_response
+
+        order.payment_method = payment_method
+        order.status = 'paid'
+        order.save(update_fields=['payment_method', 'status'])
+
+        return Response(
+            {
+                **OrderSerializer(order).data,
+                'invoice': _build_order_invoice(order),
+            }
+        )
 
 class CoolBoxRentalViewSet(viewsets.ModelViewSet):
     queryset = CoolBoxRental.objects.all()
