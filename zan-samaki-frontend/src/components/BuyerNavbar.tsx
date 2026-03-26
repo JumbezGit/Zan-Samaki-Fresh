@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { Menu, Package, Radio, Search, ShoppingBasket, ShoppingCart } from 'lucide-react'
 import BrandLogo from '@/components/BrandLogo'
 import UserMenu from '@/components/UserMenu'
@@ -12,6 +12,12 @@ interface BuyerNavbarProps {
 const BuyerNavbar = ({ username, onLogout }: BuyerNavbarProps) => {
   const [searchTerm, setSearchTerm] = useState('')
   const navigate = useNavigate()
+  const navLinkClass = ({ isActive }: { isActive: boolean }) =>
+    `flex items-center space-x-2 rounded-lg px-3 py-2 font-medium transition-all ${
+      isActive
+        ? 'bg-ocean-50 text-ocean-700'
+        : 'text-gray-700 hover:bg-ocean-50 hover:text-ocean-600'
+    }`
 
   const handleSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -41,34 +47,35 @@ const BuyerNavbar = ({ username, onLogout }: BuyerNavbarProps) => {
                 className="w-56 rounded-xl border border-ocean-100 bg-white px-10 py-2 text-sm text-gray-700 shadow-sm outline-none transition-all focus:border-ocean-400 focus:ring-2 focus:ring-ocean-200"
               />
             </form>
-            <Link
+            <NavLink
               to="/buyer"
-              className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-ocean-50 text-ocean-700 font-medium transition-all"
+              end
+              className={navLinkClass}
             >
               <ShoppingCart className="w-5 h-5" />
               <span>Soko</span>
-            </Link>
-            <Link
+            </NavLink>
+            <NavLink
               to="/buyer/orders"
-              className="flex items-center space-x-2 px-3 py-2 rounded-lg text-gray-700 hover:text-ocean-600 hover:bg-ocean-50 font-medium transition-all"
+              className={navLinkClass}
             >
               <Package className="w-5 h-5" />
               <span>Order</span>
-            </Link>
-            <Link
+            </NavLink>
+            <NavLink
               to="/buyer/cart"
-              className="flex items-center space-x-2 px-3 py-2 rounded-lg text-gray-700 hover:text-ocean-600 hover:bg-ocean-50 font-medium transition-all"
+              className={navLinkClass}
             >
               <ShoppingBasket className="w-5 h-5" />
               <span>Cart</span>
-            </Link>
-            <Link
+            </NavLink>
+            <NavLink
               to="/buyer/live"
-              className="flex items-center space-x-2 px-3 py-2 rounded-lg text-gray-700 hover:text-ocean-600 hover:bg-ocean-50 font-medium transition-all"
+              className={navLinkClass}
             >
               <Radio className="w-5 h-5" />
               <span>Live</span>
-            </Link>
+            </NavLink>
             <UserMenu username={username} onLogout={onLogout} />
           </div>
 

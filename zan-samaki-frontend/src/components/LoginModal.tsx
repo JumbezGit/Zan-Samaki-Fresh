@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Lock, Mail, UserPlus } from 'lucide-react'
+import { Eye, EyeOff, Lock, Mail, UserPlus } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 type UserRole = 'fisher' | 'buyer' | 'admin'
@@ -38,6 +38,7 @@ const LoginModal = ({
   const [isLogin, setIsLogin] = useState(initialMode === 'login')
   const [role, setRole] = useState<RegistrationRole>(initialRole === 'admin' ? 'buyer' : initialRole)
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const { register, handleSubmit, formState: { errors }, reset } = useForm<AuthFormValues>()
   const activeRole = isLogin ? initialRole : role
   const authTitle = `${roleLabels[activeRole]}-${isLogin ? 'Ingia' : 'Jisajili'}`
@@ -50,6 +51,7 @@ const LoginModal = ({
 
     setIsLogin(initialRole === 'admin' ? true : initialMode === 'login')
     setRole(initialRole === 'admin' ? 'buyer' : initialRole)
+    setShowPassword(false)
     reset()
   }, [initialMode, initialRole, isOpen, reset])
 
@@ -150,10 +152,18 @@ const LoginModal = ({
                   message: 'Nenosiri lazima liwe na herufi 5+'
                 } })}
                 disabled={loading}
-                type="password"
-                className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-ocean-500 focus:border-transparent transition-all"
+                type={showPassword ? 'text' : 'password'}
+                className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-ocean-500 focus:border-transparent transition-all"
                 placeholder="Nenosiri lako"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword((value) => !value)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-ocean-600"
+                aria-label={showPassword ? 'Ficha nenosiri' : 'Onyesha nenosiri'}
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
             </div>
             {errors.password && <p className="text-red-500 text-sm mt-1">{String(errors.password.message)}</p>}
           </div>
