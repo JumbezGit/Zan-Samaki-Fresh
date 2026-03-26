@@ -242,17 +242,7 @@ const HomePage = ({
         Samaki safi moja kwa moja kutoka kwa wavuvi wa Zanzibar.
         Punguza upotevu wa mazao kwa sanduku la baridi la solar!
       </p>
-      <div className="flex flex-col sm:flex-row gap-4 justify-center">
-        <button
-          onClick={() => document.getElementById('login-sections')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-          className="bg-ocean-600 text-white px-8 py-4 rounded-xl text-lg font-semibold hover:bg-ocean-700 transition-all shadow-xl"
-        >
-          Chagua Sehemu Yako
-        </button>
-        <button className="border-2 border-ocean-600 text-ocean-600 px-8 py-4 rounded-xl text-lg font-semibold hover:bg-ocean-600 hover:text-white transition-all">
-          Angalia Video
-        </button>
-      </div>
+    
     </div>
 
     <div id="login-sections" className="grid md:grid-cols-4 gap-8 mt-20 scroll-mt-24">
