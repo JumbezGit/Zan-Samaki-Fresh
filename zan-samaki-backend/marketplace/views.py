@@ -7,6 +7,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from decimal import Decimal, InvalidOperation
+from django.utils import timezone
 from .models import FishCatch, Order, CoolBoxRental
 from .serializers import (
     FishCatchSerializer, CreateFishCatchSerializer, 
@@ -180,6 +181,20 @@ class FishCatchViewSet(viewsets.ModelViewSet):
         return Response(
             {
                 **OrderSerializer(order).data,
+                'invoice': {
+                    'invoice_number': f'INV-{timezone.now().strftime("%Y%m%d")}-{order.id}',
+                    'issued_at': timezone.localtime(order.created_at).isoformat(),
+                    'buyer_name': request.user.username,
+                    'fisher_name': catch.user.username,
+                    'fish_title': catch.title,
+                    'fish_type': catch.fish_type,
+                    'quantity': str(order.quantity),
+                    'price_per_kg': str(catch.price_per_kg),
+                    'total_price': str(order.total_price),
+                    'payment_method': order.payment_method,
+                    'status': order.status,
+                    'location': catch.location,
+                },
                 'remaining_quantity': str(catch.quantity),
                 'catch_status': catch.status,
             }

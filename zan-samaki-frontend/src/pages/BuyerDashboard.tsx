@@ -6,6 +6,21 @@ import FishCard, { type FishCardItem } from '@/components/FishCard'
 
 type Catch = FishCardItem
 
+interface PurchaseInvoice {
+  invoice_number: string
+  issued_at: string
+  buyer_name: string
+  fisher_name: string
+  fish_title: string
+  fish_type: string
+  quantity: string
+  price_per_kg: string
+  total_price: string
+  payment_method: string
+  status: string
+  location: string
+}
+
 const demoCatch: Catch = {
   id: 0,
   title: 'Dagaa Fresh Demo',
@@ -31,6 +46,7 @@ const BuyerDashboard = () => {
   const [loading, setLoading] = useState(false)
   const [selectedCatch, setSelectedCatch] = useState<Catch | null>(null)
   const [purchaseQuantity, setPurchaseQuantity] = useState('1')
+  const [invoice, setInvoice] = useState<PurchaseInvoice | null>(null)
 
   const FISH_TYPES = ['Dagaa', 'Changu', "Ng'ongo", 'Tafi', 'Pweza']
 
@@ -98,11 +114,14 @@ const BuyerDashboard = () => {
       })
 
       if (res.ok) {
-        toast.success('Umenunua! Tigo Pesa confirmation sent.')
+        const data = await res.json()
+        setInvoice(data.invoice ?? null)
+        toast.success('Umenunua! Invoice imetengenezwa.')
         fetchCatches()
         setSelectedCatch(null)
       } else {
-        toast.error('Kosa la kununua')
+        const data = await res.json().catch(() => null)
+        toast.error(data?.detail || 'Kosa la kununua')
       }
     } catch (err) {
       toast.error('Kosa la kununua')
@@ -316,6 +335,74 @@ const BuyerDashboard = () => {
               className="w-full border border-gray-300 text-gray-700 py-3 px-6 rounded-xl font-semibold hover:bg-gray-50 transition-all"
             >
               Funga
+            </button>
+          </div>
+        </div>
+      )}
+
+      {invoice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-xl rounded-2xl bg-white p-8 shadow-2xl">
+            <div className="mb-6 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-ocean-600">Invoice</p>
+                <h2 className="mt-2 text-3xl font-bold text-slate-900">{invoice.invoice_number}</h2>
+                <p className="mt-2 text-sm text-slate-500">
+                  Imekamilika: {new Date(invoice.issued_at).toLocaleString()}
+                </p>
+              </div>
+              <div className="rounded-xl bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
+                {invoice.status}
+              </div>
+            </div>
+
+            <div className="grid gap-4 rounded-2xl bg-slate-50 p-5 md:grid-cols-2">
+              <div>
+                <p className="text-sm text-slate-500">Buyer</p>
+                <p className="font-semibold text-slate-900">{invoice.buyer_name}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">Mvuvi</p>
+                <p className="font-semibold text-slate-900">{invoice.fisher_name}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">Samaki</p>
+                <p className="font-semibold text-slate-900">{invoice.fish_title}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">Aina</p>
+                <p className="font-semibold text-slate-900">{invoice.fish_type}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">Mahali</p>
+                <p className="font-semibold text-slate-900">{invoice.location}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">Malipo</p>
+                <p className="font-semibold text-slate-900">{invoice.payment_method}</p>
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-slate-200 p-5">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-slate-500">Kiasi</span>
+                <span className="font-semibold text-slate-900">{invoice.quantity} kg</span>
+              </div>
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-slate-500">Bei kwa kilo</span>
+                <span className="font-semibold text-slate-900">TZS {Number(invoice.price_per_kg).toLocaleString()}</span>
+              </div>
+              <div className="flex items-center justify-between border-t border-slate-200 pt-3 text-lg">
+                <span className="font-semibold text-slate-700">Jumla</span>
+                <span className="font-bold text-emerald-700">TZS {Number(invoice.total_price).toLocaleString()}</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setInvoice(null)}
+              className="mt-6 w-full rounded-xl bg-ocean-600 px-6 py-3 font-semibold text-white transition-all hover:bg-ocean-700"
+            >
+              Funga Invoice
             </button>
           </div>
         </div>
