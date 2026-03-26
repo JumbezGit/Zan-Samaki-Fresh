@@ -38,14 +38,9 @@ const BuyerDashboard = () => {
   const FISH_TYPES = ['Dagaa', 'Changu', "Ng'ongo", 'Tafi', 'Pweza']
 
   useEffect(() => {
-    fetchCatches()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  useEffect(() => {
-    const nextSearch = searchParams.get('search') || ''
-
     setFilters((currentFilters) => {
+      const nextSearch = searchParams.get('search') || ''
+
       if (currentFilters.search === nextSearch) {
         return currentFilters
       }
@@ -57,14 +52,14 @@ const BuyerDashboard = () => {
     })
   }, [searchParams])
 
-  const fetchCatches = async () => {
+  const fetchCatches = async (activeFilters = filters) => {
     setLoading(true)
     try {
       const token = localStorage.getItem('token')
       const url = new URL('/api/catches/', window.location.origin)
       const params = new URLSearchParams()
 
-      Object.entries(filters).forEach(([key, value]) => {
+      Object.entries(activeFilters).forEach(([key, value]) => {
         if (value) {
           params.append(key, value)
         }
@@ -84,6 +79,11 @@ const BuyerDashboard = () => {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    void fetchCatches(filters)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters])
 
   const buyCatch = async (catchId: number, quantity: number) => {
     try {
@@ -119,29 +119,6 @@ const BuyerDashboard = () => {
     setSelectedCatch(catchItem)
     setPurchaseQuantity('1')
   }
-
-  const filteredCatches = catches.filter((catchItem) => {
-    if (
-      filters.search &&
-      !catchItem.title.toLowerCase().includes(filters.search.toLowerCase())
-    ) {
-      return false
-    }
-
-    if (filters.fishType && catchItem.fish_type !== filters.fishType) {
-      return false
-    }
-
-    if (filters.location && !catchItem.location.includes(filters.location)) {
-      return false
-    }
-
-    if (filters.maxPrice && catchItem.price_per_kg > parseFloat(filters.maxPrice)) {
-      return false
-    }
-
-    return true
-  })
 
   const parsedPurchaseQuantity = Number(purchaseQuantity)
   const isQuantityValid = Boolean(
@@ -204,7 +181,7 @@ const BuyerDashboard = () => {
 
           <div className="flex items-end">
             <button
-              onClick={fetchCatches}
+              onClick={() => void fetchCatches(filters)}
               disabled={loading}
               className="w-full bg-ocean-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-ocean-700 disabled:opacity-50 transition-all"
             >
@@ -220,12 +197,12 @@ const BuyerDashboard = () => {
           <span>Soko la Samaki Safi</span>
         </h1>
         <div className="text-2xl font-bold text-emerald-600">
-          {filteredCatches.length} patokanayo
+          {catches.length} patokanayo
         </div>
       </div>
 
       <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {filteredCatches.map((catchItem) => (
+        {catches.map((catchItem) => (
           <FishCard key={catchItem.id} item={catchItem} onSelect={openCatchDetails} />
         ))}
       </div>
