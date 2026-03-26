@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
-import { Shield, Fish, ShoppingCart, Home } from 'lucide-react'
+import { Shield, Fish, ShoppingCart, Home, Package, Radio } from 'lucide-react'
 import toast from 'react-hot-toast'
 import AuthPage from '@/pages/AuthPage'
 import FisherDashboard from '@/pages/FisherDashboard'
 import BuyerDashboard from '@/pages/BuyerDashboard'
+import BuyerOrdersPage from '@/pages/BuyerOrdersPage'
+import BuyerLivePage from '@/pages/BuyerLivePage'
 import AdminDashboard from '@/pages/AdminDashboard'
 import Layout from '@/components/Layout'
 import Navbar from '@/components/Navbar'
@@ -55,9 +57,15 @@ const App = () => {
   }
 
   const navItems = [
-    { name: 'Nyumbani', icon: Home, href: '/' },
+    ...(!user ? [{ name: 'Nyumbani', icon: Home, href: '/' }] : []),
     ...(role === 'fisher' ? [{ name: 'Dashibodi ya Mvuvi', icon: Fish, href: '/fisher' }] : []),
-    ...(role === 'buyer' ? [{ name: 'Soko', icon: ShoppingCart, href: '/buyer' }] : []),
+    ...(role === 'buyer'
+      ? [
+          { name: 'Soko', icon: ShoppingCart, href: '/buyer' },
+          { name: 'Order', icon: Package, href: '/buyer/orders' },
+          { name: 'Live', icon: Radio, href: '/buyer/live' },
+        ]
+      : []),
     ...(role === 'admin' ? [{ name: 'Admin', icon: Shield, href: '/admin' }] : []),
   ]
 
@@ -75,6 +83,8 @@ const App = () => {
         <Route path="/auth" element={!user ? <AuthPage setUser={setUser} setRole={setRole} /> : <Navigate to="/" />} />
         <Route path="/fisher" element={role === 'fisher' ? <Layout><FisherDashboard /></Layout> : <Navigate to="/" />} />
         <Route path="/buyer" element={role === 'buyer' ? <Layout><BuyerDashboard /></Layout> : <Navigate to="/" />} />
+        <Route path="/buyer/orders" element={role === 'buyer' ? <Layout><BuyerOrdersPage /></Layout> : <Navigate to="/" />} />
+        <Route path="/buyer/live" element={role === 'buyer' ? <Layout><BuyerLivePage /></Layout> : <Navigate to="/" />} />
         <Route path="/admin" element={role === 'admin' ? <Layout><AdminDashboard /></Layout> : <Navigate to="/" />} />
       </Routes>
 
