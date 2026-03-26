@@ -41,6 +41,7 @@ const getRoleLabel = (role: UserRole) => {
 const App = () => {
   const [user, setUser] = useState<AppUser | null>(null)
   const [role, setRole] = useState('')
+  const [authReady, setAuthReady] = useState(false)
   const [adminSidebarOpen, setAdminSidebarOpen] = useState(false)
   const [showLogin, setShowLogin] = useState(false)
   const [loginMode, setLoginMode] = useState<'login' | 'register'>('login')
@@ -52,7 +53,10 @@ const App = () => {
 
     if (token) {
       void fetchUser()
+      return
     }
+
+    setAuthReady(true)
   }, [])
 
   const fetchUser = async () => {
@@ -70,6 +74,10 @@ const App = () => {
       }
     } catch (err) {
       localStorage.removeItem('token')
+      setUser(null)
+      setRole('')
+    } finally {
+      setAuthReady(true)
     }
 
     return null
@@ -161,6 +169,17 @@ const App = () => {
     return <PublicNavbar onLogin={openRoleLogin} />
   }
 
+  if (!authReady) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-ocean-50 to-blue-50">
+        <div className="rounded-2xl border border-white/60 bg-white/80 px-6 py-5 text-center shadow-xl backdrop-blur-sm">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-ocean-600">ZanSamaki Fresh</p>
+          <p className="mt-3 text-lg font-semibold text-slate-800">Inafungua dashboard...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-ocean-50 to-blue-50">
       {renderNavbar()}
@@ -168,20 +187,20 @@ const App = () => {
       <Routes>
         <Route
           path="/"
-          element={<Layout><HomePage onRoleAction={handleRoleAction} /></Layout>}
+          element={user && role ? <Navigate to={getDashboardPath(role)} replace /> : <Layout><HomePage onRoleAction={handleRoleAction} /></Layout>}
         />
-        <Route path="/auth" element={!user ? <AuthPage setUser={setUser} setRole={setRole} /> : <Navigate to="/" />} />
-        <Route path="/fisher" element={role === 'fisher' ? <Layout><FisherDashboard /></Layout> : <Navigate to="/" />} />
-        <Route path="/buyer" element={role === 'buyer' ? <Layout><BuyerDashboard /></Layout> : <Navigate to="/" />} />
-        <Route path="/buyer/cart" element={role === 'buyer' ? <Layout><BuyerCartPage /></Layout> : <Navigate to="/" />} />
-        <Route path="/buyer/orders" element={role === 'buyer' ? <Layout><BuyerOrdersPage /></Layout> : <Navigate to="/" />} />
-        <Route path="/buyer/live" element={role === 'buyer' ? <Layout><BuyerLivePage /></Layout> : <Navigate to="/" />} />
+        <Route path="/auth" element={!user ? <AuthPage setUser={setUser} setRole={setRole} /> : <Navigate to={getDashboardPath(role)} replace />} />
+        <Route path="/fisher" element={role === 'fisher' ? <Layout><FisherDashboard /></Layout> : <Navigate to={user && role ? getDashboardPath(role) : '/'} replace />} />
+        <Route path="/buyer" element={role === 'buyer' ? <Layout><BuyerDashboard /></Layout> : <Navigate to={user && role ? getDashboardPath(role) : '/'} replace />} />
+        <Route path="/buyer/cart" element={role === 'buyer' ? <Layout><BuyerCartPage /></Layout> : <Navigate to={user && role ? getDashboardPath(role) : '/'} replace />} />
+        <Route path="/buyer/orders" element={role === 'buyer' ? <Layout><BuyerOrdersPage /></Layout> : <Navigate to={user && role ? getDashboardPath(role) : '/'} replace />} />
+        <Route path="/buyer/live" element={role === 'buyer' ? <Layout><BuyerLivePage /></Layout> : <Navigate to={user && role ? getDashboardPath(role) : '/'} replace />} />
         <Route
           path="/admin"
           element={
             role === 'admin'
               ? <Layout><AdminDashboard isSidebarOpen={adminSidebarOpen} onCloseSidebar={() => setAdminSidebarOpen(false)} initialSection="overview" /></Layout>
-              : <Navigate to="/" />
+              : <Navigate to={user && role ? getDashboardPath(role) : '/'} replace />
           }
         />
         <Route
@@ -193,7 +212,7 @@ const App = () => {
                   ? <Layout><AdminDashboard isSidebarOpen={adminSidebarOpen} onCloseSidebar={() => setAdminSidebarOpen(false)} initialSection="settings" /></Layout>
                   : <Layout><SettingsPage username={user.username} role={role} /></Layout>
               )
-              : <Navigate to="/" />
+              : <Navigate to="/" replace />
           }
         />
       </Routes>
