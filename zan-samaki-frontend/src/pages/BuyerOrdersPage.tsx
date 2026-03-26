@@ -48,13 +48,13 @@ const BuyerOrdersPage = () => {
         </div>
       </div>
 
-      <div className="grid gap-6">
+      <div className="grid gap-6 md:grid-cols-3">
         {orders.map((order) => (
           <div
             key={order.id}
             className="bg-white/70 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg p-6"
           >
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+            <div className="flex h-full flex-col justify-between gap-5">
               <div>
                 <div className="flex items-center gap-3 mb-3">
                   <span className="px-3 py-1 rounded-full bg-ocean-100 text-ocean-800 text-sm font-semibold">
