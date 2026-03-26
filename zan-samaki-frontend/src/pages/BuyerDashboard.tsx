@@ -21,13 +21,27 @@ interface PurchaseInvoice {
   location: string
 }
 
+interface PaymentSimulation {
+  can_proceed: boolean
+  message: string
+  remaining_quantity: string
+  catch_status: string
+}
+
+type PaymentMethod = 'tigo_pesa' | 'mpesa'
+
 const BuyerDashboard = () => {
   const [searchParams] = useSearchParams()
   const [catches, setCatches] = useState<Catch[]>([])
   const [search, setSearch] = useState(searchParams.get('search') || '')
   const [selectedCatch, setSelectedCatch] = useState<Catch | null>(null)
   const [purchaseQuantity, setPurchaseQuantity] = useState('1')
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('tigo_pesa')
+  const [paymentPreview, setPaymentPreview] = useState<PaymentSimulation | null>(null)
+  const [previewInvoice, setPreviewInvoice] = useState<PurchaseInvoice | null>(null)
   const [invoice, setInvoice] = useState<PurchaseInvoice | null>(null)
+  const [previewingPayment, setPreviewingPayment] = useState(false)
+  const [submittingPayment, setSubmittingPayment] = useState(false)
 
   useEffect(() => {
     setSearch(searchParams.get('search') || '')
@@ -61,8 +75,9 @@ const BuyerDashboard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search])
 
-  const buyCatch = async (catchId: number, quantity: number) => {
+  const buyCatch = async (catchId: number, quantity: number, selectedPaymentMethod: PaymentMethod) => {
     try {
+      setSubmittingPayment(true)
       const token = localStorage.getItem('token')
       const res = await fetch(`/api/catches/${catchId}/buy/`, {
         method: 'POST',
@@ -72,7 +87,7 @@ const BuyerDashboard = () => {
         },
         body: JSON.stringify({
           quantity,
-          payment_method: 'tigo_pesa'
+          payment_method: selectedPaymentMethod
         })
       })
 
@@ -80,20 +95,60 @@ const BuyerDashboard = () => {
         const data = await res.json()
         setInvoice(data.invoice ?? null)
         toast.success('Umenunua! Invoice imetengenezwa.')
-        fetchCatches()
+        void fetchCatches()
         setSelectedCatch(null)
+        setPaymentPreview(null)
+        setPreviewInvoice(null)
       } else {
         const data = await res.json().catch(() => null)
         toast.error(data?.detail || 'Kosa la kununua')
       }
     } catch (err) {
       toast.error('Kosa la kununua')
+    } finally {
+      setSubmittingPayment(false)
     }
   }
 
   const openCatchDetails = (catchItem: Catch) => {
     setSelectedCatch(catchItem)
     setPurchaseQuantity('1')
+    setPaymentMethod('tigo_pesa')
+    setPaymentPreview(null)
+    setPreviewInvoice(null)
+  }
+
+  const simulatePayment = async (catchId: number, quantity: number, selectedPaymentMethod: PaymentMethod) => {
+    try {
+      setPreviewingPayment(true)
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/catches/${catchId}/buy-preview/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          quantity,
+          payment_method: selectedPaymentMethod
+        })
+      })
+
+      const data = await res.json().catch(() => null)
+
+      if (!res.ok) {
+        toast.error(data?.detail || 'Simulation ya malipo imeshindikana')
+        return
+      }
+
+      setPaymentPreview(data?.simulation ?? null)
+      setPreviewInvoice(data?.invoice ?? null)
+      toast.success('Simulation ya malipo imekamilika. Thibitisha sasa.')
+    } catch (err) {
+      toast.error('Simulation ya malipo imeshindikana')
+    } finally {
+      setPreviewingPayment(false)
+    }
   }
 
   const parsedPurchaseQuantity = Number(purchaseQuantity)
@@ -106,6 +161,11 @@ const BuyerDashboard = () => {
   const totalPrice = selectedCatch && isQuantityValid
     ? parsedPurchaseQuantity * selectedCatch.price_per_kg
     : 0
+
+  useEffect(() => {
+    setPaymentPreview(null)
+    setPreviewInvoice(null)
+  }, [purchaseQuantity, paymentMethod, selectedCatch?.id])
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12">
@@ -174,6 +234,56 @@ const BuyerDashboard = () => {
                   </p>
                 )}
               </div>
+
+              <div className="rounded-xl bg-slate-50 p-4">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Chagua njia ya malipo
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('tigo_pesa')}
+                    className={`rounded-xl border px-4 py-3 text-sm font-semibold transition-all ${
+                      paymentMethod === 'tigo_pesa'
+                        ? 'border-emerald-500 bg-emerald-100 text-emerald-800'
+                        : 'border-slate-200 bg-white text-slate-700'
+                    }`}
+                  >
+                    Tigo Pesa
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('mpesa')}
+                    className={`rounded-xl border px-4 py-3 text-sm font-semibold transition-all ${
+                      paymentMethod === 'mpesa'
+                        ? 'border-emerald-500 bg-emerald-100 text-emerald-800'
+                        : 'border-slate-200 bg-white text-slate-700'
+                    }`}
+                  >
+                    M-Pesa
+                  </button>
+                </div>
+              </div>
+
+              {previewInvoice && paymentPreview && (
+                <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">Simulation ya Malipo</p>
+                      <p className="mt-1 text-lg font-bold text-slate-900">{previewInvoice.invoice_number}</p>
+                    </div>
+                    <div className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-blue-700">
+                      {previewInvoice.status}
+                    </div>
+                  </div>
+                  <div className="mt-4 space-y-2 text-sm text-slate-700">
+                    <p>Jumla: <span className="font-semibold">TZS {Number(previewInvoice.total_price).toLocaleString()}</span></p>
+                    <p>Malipo: <span className="font-semibold">{previewInvoice.payment_method}</span></p>
+                    <p>Kiasi kitakachobaki: <span className="font-semibold">{paymentPreview.remaining_quantity} kg</span></p>
+                    <p className="text-blue-700">{paymentPreview.message}</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 mb-8 p-4 bg-blue-50 rounded-xl">
@@ -187,13 +297,31 @@ const BuyerDashboard = () => {
                     toast.error('Weka kiasi sahihi cha kilo')
                     return
                   }
-                  buyCatch(selectedCatch.id, parsedPurchaseQuantity)
+                  void simulatePayment(selectedCatch.id, parsedPurchaseQuantity, paymentMethod)
                 }}
-                className="flex-1 bg-gradient-to-r from-emerald-500 to-green-600 text-white py-3 px-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-60"
-                disabled={!isQuantityValid}
+                className="flex-1 rounded-xl border border-emerald-200 bg-white py-3 px-4 font-semibold text-emerald-700 shadow-sm transition-all hover:bg-emerald-50 disabled:opacity-60"
+                disabled={!isQuantityValid || previewingPayment || submittingPayment}
               >
                 <ShoppingCart className="w-5 h-5 inline mr-2" />
-                Lipa Tigo Pesa
+                {previewingPayment ? 'Inasimulate...' : 'Simulate Payment'}
+              </button>
+              <button
+                onClick={() => {
+                  if (!isQuantityValid) {
+                    toast.error('Weka kiasi sahihi cha kilo')
+                    return
+                  }
+                  if (!paymentPreview || !previewInvoice) {
+                    toast.error('Fanya simulation ya malipo kwanza')
+                    return
+                  }
+                  void buyCatch(selectedCatch.id, parsedPurchaseQuantity, paymentMethod)
+                }}
+                className="flex-1 bg-gradient-to-r from-emerald-500 to-green-600 text-white py-3 px-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-60"
+                disabled={!isQuantityValid || !paymentPreview || submittingPayment}
+              >
+                <ShoppingCart className="w-5 h-5 inline mr-2" />
+                {submittingPayment ? 'Inatuma Malipo...' : `Thibitisha ${paymentMethod === 'tigo_pesa' ? 'Tigo Pesa' : 'M-Pesa'}`}
               </button>
             </div>
 

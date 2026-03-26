@@ -9,6 +9,8 @@ interface LiveAuction {
   status: string
   bidder_count: number
   last_bid_at: string | null
+  bid_expires_at: string | null
+  server_time: string
   seller: {
     username: string
   }
@@ -48,20 +50,28 @@ const getAuctionSocketUrl = () => {
   return `${protocol}//${window.location.host}/ws/auctions/`
 }
 
-const getTimeLeft = (lastBidAt: string | null) => {
-  if (!lastBidAt) {
+const getTimeLeft = (bidExpiresAt: string | null, serverOffsetMs: number) => {
+  if (!bidExpiresAt) {
     return 'Dakika 1'
   }
 
-  const elapsed = Date.now() - new Date(lastBidAt).getTime()
-  const remainingMs = Math.max(0, 60000 - elapsed)
+  const remainingMs = Math.max(0, new Date(bidExpiresAt).getTime() - (Date.now() + serverOffsetMs))
   const seconds = Math.ceil(remainingMs / 1000)
   return `${seconds}s`
 }
 
 const BuyerLivePage = () => {
   const [liveAuctions, setLiveAuctions] = useState<LiveAuction[]>([])
+  const [serverOffsetMs, setServerOffsetMs] = useState(0)
   const [, setTick] = useState(0)
+
+  const syncServerOffset = (auctions: LiveAuction[]) => {
+    if (auctions.length === 0 || !auctions[0].server_time) {
+      return
+    }
+
+    setServerOffsetMs(new Date(auctions[0].server_time).getTime() - Date.now())
+  }
 
   const fetchAuctions = async () => {
     try {
@@ -70,7 +80,9 @@ const BuyerLivePage = () => {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()
-      setLiveAuctions(Array.isArray(data) ? data.filter((item) => item.status === 'open') : [])
+      const auctions = Array.isArray(data) ? data.filter((item) => item.status === 'open') : []
+      setLiveAuctions(auctions)
+      syncServerOffset(auctions)
     } catch (error) {
       toast.error('Tatizo la kupakia minada')
     }
@@ -86,7 +98,9 @@ const BuyerLivePage = () => {
     socket.onmessage = (event) => {
       const payload = JSON.parse(event.data)
       if (payload.type === 'auction_snapshot') {
-        setLiveAuctions(Array.isArray(payload.auctions) ? payload.auctions : [])
+        const auctions = Array.isArray(payload.auctions) ? payload.auctions : []
+        setLiveAuctions(auctions)
+        syncServerOffset(auctions)
       }
     }
 
@@ -118,6 +132,9 @@ const BuyerLivePage = () => {
       setLiveAuctions((currentAuctions) =>
         currentAuctions.map((auction) => (auction.id === auctionId ? data.auction : auction))
       )
+      if (data?.auction?.server_time) {
+        setServerOffsetMs(new Date(data.auction.server_time).getTime() - Date.now())
+      }
       toast.success(`Bid imewekwa: TZS ${Number(data.bid_amount).toLocaleString()}`)
     } catch (error) {
       toast.error('Tatizo la kubid mnada')
@@ -182,7 +199,7 @@ const BuyerLivePage = () => {
                     <div className="rounded-xl border border-slate-100 bg-white p-4">
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Muda uliobaki</p>
                       <p className="mt-1 text-lg font-bold text-red-600">
-                        {getTimeLeft(auction.last_bid_at)}
+                        {getTimeLeft(auction.bid_expires_at, serverOffsetMs)}
                       </p>
                     </div>
                   </div>

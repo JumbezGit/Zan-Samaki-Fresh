@@ -1,4 +1,5 @@
 import json
+from django.utils import timezone
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from .models import Auction
@@ -78,10 +79,11 @@ class AuctionConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def get_open_auctions(self):
+        snapshot_time = timezone.now()
         queryset = Auction.objects.select_related(
             'catch',
             'seller',
             'highest_bidder'
         ).prefetch_related('bids__buyer').filter(status='open').order_by('-created_at')
-        return AuctionSerializer(queryset, many=True).data
+        return AuctionSerializer(queryset, many=True, context={'snapshot_time': snapshot_time}).data
 

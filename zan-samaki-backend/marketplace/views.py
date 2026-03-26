@@ -39,6 +39,8 @@ def _broadcast_auction_snapshot():
     if not channel_layer:
         return
 
+    snapshot_time = timezone.now()
+
     queryset = Auction.objects.select_related(
         'catch',
         'seller',
@@ -49,7 +51,11 @@ def _broadcast_auction_snapshot():
         'auctions_live',
         {
             'type': 'auction_snapshot',
-            'auctions': AuctionSerializer(queryset, many=True).data,
+            'auctions': AuctionSerializer(
+                queryset,
+                many=True,
+                context={'snapshot_time': snapshot_time},
+            ).data,
         }
     )
 
@@ -179,6 +185,65 @@ class FishCatchViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+    def _resolve_purchase(self, catch, request_data):
+        try:
+            requested_quantity = Decimal(str(request_data.get('quantity', '0')))
+        except (InvalidOperation, TypeError):
+            return None, Response(
+                {'detail': 'Kiasi cha kilo si sahihi.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if requested_quantity <= 0:
+            return None, Response(
+                {'detail': 'Kiasi cha kilo lazima kiwe zaidi ya sifuri.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if catch.status != 'available':
+            return None, Response(
+                {'detail': 'Samaki hawa hawapo sokoni kwa sasa.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if requested_quantity > catch.quantity:
+            return None, Response(
+                {'detail': f'Kilo zilizopo ni {catch.quantity} tu.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        payment_method = request_data.get('payment_method', 'tigo_pesa')
+        valid_methods = {choice[0] for choice in Order._meta.get_field('payment_method').choices}
+
+        if payment_method not in valid_methods:
+            return None, Response(
+                {'detail': 'Njia ya malipo si sahihi.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return {
+            'requested_quantity': requested_quantity,
+            'payment_method': payment_method,
+            'total_price': requested_quantity * catch.price_per_kg,
+            'remaining_quantity': catch.quantity - requested_quantity,
+        }, None
+
+    def _build_invoice_payload(self, catch, buyer, purchase_details, order=None, status_override=None):
+        return {
+            'invoice_number': f'INV-{timezone.now().strftime("%Y%m%d")}-{order.id if order else "SIM"}',
+            'issued_at': timezone.localtime(order.created_at).isoformat() if order else timezone.localtime().isoformat(),
+            'buyer_name': buyer.username,
+            'fisher_name': catch.user.username,
+            'fish_title': catch.title,
+            'fish_type': catch.fish_type,
+            'quantity': str(order.quantity if order else purchase_details['requested_quantity']),
+            'price_per_kg': str(catch.price_per_kg),
+            'total_price': str(order.total_price if order else purchase_details['total_price']),
+            'payment_method': order.payment_method if order else purchase_details['payment_method'],
+            'status': status_override or (order.status if order else 'simulated'),
+            'location': catch.location,
+        }
+
     def get_queryset(self):
         if self.request.user.is_authenticated and self.request.user.role == 'admin':
             return FishCatch.objects.select_related('user').order_by('-created_at')
@@ -193,69 +258,58 @@ class FishCatchViewSet(viewsets.ModelViewSet):
         catch.save()
         return Response({'status': 'reserved'})
 
+    @action(detail=True, methods=['post'], url_path='buy-preview')
+    def buy_preview(self, request, pk=None):
+        catch = self.get_object()
+        purchase_details, error_response = self._resolve_purchase(catch, request.data)
+        if error_response:
+            return error_response
+
+        return Response(
+            {
+                'simulation': {
+                    'can_proceed': True,
+                    'message': 'Malipo yamehakikiwa. Unaweza kuthibitisha sasa.',
+                    'remaining_quantity': str(purchase_details['remaining_quantity']),
+                    'catch_status': 'sold' if purchase_details['remaining_quantity'] <= Decimal('0') else 'available',
+                },
+                'invoice': self._build_invoice_payload(
+                    catch=catch,
+                    buyer=request.user,
+                    purchase_details=purchase_details,
+                ),
+            }
+        )
+
     @action(detail=True, methods=['post'])
     def buy(self, request, pk=None):
         with transaction.atomic():
             catch = FishCatch.objects.select_for_update().get(pk=pk)
-
-            try:
-                requested_quantity = Decimal(str(request.data.get('quantity', '0')))
-            except (InvalidOperation, TypeError):
-                return Response(
-                    {'detail': 'Kiasi cha kilo si sahihi.'},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            if requested_quantity <= 0:
-                return Response(
-                    {'detail': 'Kiasi cha kilo lazima kiwe zaidi ya sifuri.'},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            if catch.status != 'available':
-                return Response(
-                    {'detail': 'Samaki hawa hawapo sokoni kwa sasa.'},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            if requested_quantity > catch.quantity:
-                return Response(
-                    {'detail': f'Kilo zilizopo ni {catch.quantity} tu.'},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            total_price = requested_quantity * catch.price_per_kg
-            remaining_quantity = catch.quantity - requested_quantity
+            purchase_details, error_response = self._resolve_purchase(catch, request.data)
+            if error_response:
+                return error_response
 
             order = Order.objects.create(
                 buyer=request.user,
                 catch=catch,
-                quantity=requested_quantity,
-                total_price=total_price,
-                payment_method=request.data.get('payment_method', 'tigo_pesa')
+                quantity=purchase_details['requested_quantity'],
+                total_price=purchase_details['total_price'],
+                payment_method=purchase_details['payment_method']
             )
 
-            catch.quantity = remaining_quantity
-            catch.status = 'sold' if remaining_quantity <= Decimal('0') else 'available'
+            catch.quantity = purchase_details['remaining_quantity']
+            catch.status = 'sold' if purchase_details['remaining_quantity'] <= Decimal('0') else 'available'
             catch.save(update_fields=['quantity', 'status'])
 
         return Response(
             {
                 **OrderSerializer(order).data,
-                'invoice': {
-                    'invoice_number': f'INV-{timezone.now().strftime("%Y%m%d")}-{order.id}',
-                    'issued_at': timezone.localtime(order.created_at).isoformat(),
-                    'buyer_name': request.user.username,
-                    'fisher_name': catch.user.username,
-                    'fish_title': catch.title,
-                    'fish_type': catch.fish_type,
-                    'quantity': str(order.quantity),
-                    'price_per_kg': str(catch.price_per_kg),
-                    'total_price': str(order.total_price),
-                    'payment_method': order.payment_method,
-                    'status': order.status,
-                    'location': catch.location,
-                },
+                'invoice': self._build_invoice_payload(
+                    catch=catch,
+                    buyer=request.user,
+                    purchase_details=purchase_details,
+                    order=order,
+                ),
                 'remaining_quantity': str(catch.quantity),
                 'catch_status': catch.status,
             }
@@ -301,6 +355,15 @@ class AuctionViewSet(viewsets.ModelViewSet):
         if self.request.user.role == 'fisher':
             return queryset.filter(seller=self.request.user)
         return queryset
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(
+            queryset,
+            many=True,
+            context={'request': request, 'snapshot_time': timezone.now()},
+        )
+        return Response(serializer.data)
 
     def perform_create(self, serializer):
         catch = serializer.validated_data['catch']
@@ -365,7 +428,10 @@ class AuctionViewSet(viewsets.ModelViewSet):
         return Response(
             {
                 'detail': 'Bid yako imepokelewa.',
-                'auction': AuctionSerializer(auction, context={'request': request}).data,
+                'auction': AuctionSerializer(
+                    auction,
+                    context={'request': request, 'snapshot_time': timezone.now()},
+                ).data,
                 'bid_amount': str(bid.amount),
             }
         )

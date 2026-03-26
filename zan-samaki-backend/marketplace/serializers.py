@@ -1,4 +1,6 @@
 from rest_framework import serializers
+from datetime import timedelta
+from django.utils import timezone
 from django.contrib.auth import get_user_model
 from .models import FishCatch, Order, CoolBoxRental, Auction, AuctionBid
 
@@ -69,6 +71,8 @@ class AuctionSerializer(serializers.ModelSerializer):
     catch = FishCatchSerializer(read_only=True)
     bids = AuctionBidSerializer(read_only=True, many=True)
     bidder_count = serializers.SerializerMethodField()
+    bid_expires_at = serializers.SerializerMethodField()
+    server_time = serializers.SerializerMethodField()
 
     class Meta:
         model = Auction
@@ -76,6 +80,17 @@ class AuctionSerializer(serializers.ModelSerializer):
 
     def get_bidder_count(self, obj):
         return obj.bids.values('buyer_id').distinct().count()
+
+    def get_bid_expires_at(self, obj):
+        if not obj.last_bid_at:
+            return None
+        return (obj.last_bid_at + timedelta(minutes=1)).isoformat()
+
+    def get_server_time(self, obj):
+        snapshot_time = self.context.get('snapshot_time')
+        if snapshot_time is None:
+            snapshot_time = timezone.now()
+        return snapshot_time.isoformat()
 
 class CreateAuctionSerializer(serializers.ModelSerializer):
     class Meta:
