@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
-import { Fish, Shield, ShoppingCart } from 'lucide-react'
+import { Fish, Shield, ShoppingCart, Users } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Swal from 'sweetalert2'
 import AuthPage from '@/pages/AuthPage'
@@ -255,7 +255,7 @@ const HomePage = ({
       </div>
     </div>
 
-    <div id="login-sections" className="grid md:grid-cols-3 gap-8 mt-20 scroll-mt-24">
+    <div id="login-sections" className="grid md:grid-cols-4 gap-8 mt-20 scroll-mt-24">
       <div className="bg-white/70 backdrop-blur-sm p-8 rounded-2xl shadow-xl border border-white/50">
         <Fish className="w-12 h-12 text-ocean-600 mx-auto mb-4" />
         <h3 className="text-2xl font-bold mb-4 text-center">Mvuvi</h3>
@@ -287,6 +287,17 @@ const HomePage = ({
           className="w-full bg-ocean-600 text-white py-3 rounded-xl font-semibold hover:bg-ocean-700"
         >
           Admin Panel
+        </button>
+      </div>
+      <div className="bg-white/70 backdrop-blur-sm p-8 rounded-2xl shadow-xl border border-white/50">
+        <Users className="w-12 h-12 text-ocean-600 mx-auto mb-4" />
+        <h3 className="text-2xl font-bold mb-4 text-center">Staff</h3>
+        <p className="text-gray-600 mb-6 text-center">Ingia kama staff kusimamia shughuli za mfumo.</p>
+        <button
+          onClick={() => onRoleAction('admin')}
+          className="w-full bg-ocean-600 text-white py-3 rounded-xl font-semibold hover:bg-ocean-700"
+        >
+          Staff Login
         </button>
       </div>
     </div>
