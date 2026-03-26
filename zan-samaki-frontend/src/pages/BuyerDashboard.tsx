@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Search, Filter, MapPin, Fish, ShoppingCart, Phone, User } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useSearchParams } from 'react-router-dom'
 
 interface Catch {
   id: number
@@ -16,9 +17,10 @@ interface Catch {
 }
 
 const BuyerDashboard = () => {
+  const [searchParams] = useSearchParams()
   const [catches, setCatches] = useState<Catch[]>([])
   const [filters, setFilters] = useState({
-    search: '',
+    search: searchParams.get('search') || '',
     fishType: '',
     location: '',
     maxPrice: ''
@@ -32,6 +34,21 @@ const BuyerDashboard = () => {
     fetchCatches()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    const nextSearch = searchParams.get('search') || ''
+
+    setFilters((currentFilters) => {
+      if (currentFilters.search === nextSearch) {
+        return currentFilters
+      }
+
+      return {
+        ...currentFilters,
+        search: nextSearch
+      }
+    })
+  }, [searchParams])
 
   const fetchCatches = async () => {
     setLoading(true)
@@ -113,67 +130,53 @@ const BuyerDashboard = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12">
-      <div className="flex flex-col md:flex-row gap-8 mb-12">
-        <div className="md:w-80 bg-white/70 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/50">
-          <h3 className="text-xl font-bold mb-6 flex items-center space-x-2">
-            <Filter className="w-6 h-6" />
-            <span>Filtari</span>
-          </h3>
+      <div className="">
 
-          <div className="space-y-4">
-            <div>
-              <label className="block font-semibold mb-2 flex items-center space-x-2">
-                <Search className="w-4 h-4" />
-                <span>Tafuta</span>
-              </label>
-              <input
-                value={filters.search}
-                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-ocean-500"
-                placeholder="Dagaa fresh..."
-              />
-            </div>
 
-            <div>
-              <label className="block font-semibold mb-2">Aina ya Samaki</label>
-              <select
-                value={filters.fishType}
-                onChange={(e) => setFilters({ ...filters, fishType: e.target.value })}
-                className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-ocean-500"
-              >
-                <option value="">Zote</option>
-                {FISH_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
-            </div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[1.2fr_0.9fr_0.9fr_0.8fr_auto]">
 
-            <div>
-              <label className="block font-semibold mb-2 flex items-center space-x-2">
-                <MapPin className="w-4 h-4" />
-                <span>Mahali</span>
-              </label>
-              <input
-                value={filters.location}
-                onChange={(e) => setFilters({ ...filters, location: e.target.value })}
-                className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-ocean-500"
-                placeholder="Stone Town"
-              />
-            </div>
 
-            <div>
-              <label className="block font-semibold mb-2">Bei Max kwa kg</label>
-              <input
-                type="number"
-                value={filters.maxPrice}
-                onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value })}
-                className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-ocean-500"
-                placeholder="5000"
-              />
-            </div>
+          <div>
+            <label className="block font-semibold mb-2">Aina ya Samaki</label>
+            <select
+              value={filters.fishType}
+              onChange={(e) => setFilters({ ...filters, fishType: e.target.value })}
+              className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-ocean-500"
+            >
+              <option value="">Zote</option>
+              {FISH_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+          </div>
 
+          <div>
+            <label className="block font-semibold mb-2 flex items-center space-x-2">
+              <MapPin className="w-4 h-4" />
+              <span>Mahali</span>
+            </label>
+            <input
+              value={filters.location}
+              onChange={(e) => setFilters({ ...filters, location: e.target.value })}
+              className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-ocean-500"
+              placeholder="Stone Town"
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold mb-2">Bei Max kwa kg</label>
+            <input
+              type="number"
+              value={filters.maxPrice}
+              onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value })}
+              className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-ocean-500"
+              placeholder="5000"
+            />
+          </div>
+
+          <div className="flex items-end">
             <button
               onClick={fetchCatches}
               disabled={loading}
@@ -183,77 +186,75 @@ const BuyerDashboard = () => {
             </button>
           </div>
         </div>
+      </div>
 
-        <div className="flex-1">
-          <div className="flex items-center justify-between mb-8">
-            <h1 className="text-4xl font-bold flex items-center space-x-3">
-              <Fish className="w-12 h-12 text-ocean-600" />
-              <span>Soko la Samaki Safi</span>
-            </h1>
-            <div className="text-2xl font-bold text-emerald-600">
-              {filteredCatches.length} patokanayo
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-4xl font-bold flex items-center space-x-3">
+          <Fish className="w-12 h-12 text-ocean-600" />
+          <span>Soko la Samaki Safi</span>
+        </h1>
+        <div className="text-2xl font-bold text-emerald-600">
+          {filteredCatches.length} patokanayo
+        </div>
+      </div>
+
+      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {filteredCatches.map((catchItem) => (
+          <div
+            key={catchItem.id}
+            className="group bg-white/70 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/50 hover:shadow-2xl hover:-translate-y-2 transition-all cursor-pointer"
+            onClick={() => setSelectedCatch(catchItem)}
+          >
+            <div className="relative h-48 bg-gradient-to-br from-blue-400/20 to-ocean-500/20 rounded-xl mb-4 overflow-hidden">
+              {catchItem.photo ? (
+                <img
+                  src={catchItem.photo}
+                  alt={catchItem.title}
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                />
+              ) : (
+                <Fish className="w-24 h-24 text-white/30 absolute inset-0 m-auto" />
+              )}
+            </div>
+
+            <h3 className="font-bold text-xl mb-3 line-clamp-1">{catchItem.title}</h3>
+
+            <div className="flex items-center space-x-2 mb-3">
+              <div className="px-3 py-1 bg-ocean-100 text-ocean-800 rounded-full text-sm font-semibold">
+                {catchItem.fish_type}
+              </div>
+              <div className="px-2 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-medium">
+                {catchItem.location}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <p className="text-2xl font-bold text-emerald-600">
+                  TZS {catchItem.price_per_kg.toLocaleString()}
+                </p>
+                <p className="text-sm text-gray-500">kwa kg</p>
+              </div>
+              <div className="text-xl font-bold">{catchItem.quantity} kg</div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                <User className="w-5 h-5" />
+                <span>{catchItem.user.username}</span>
+              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setSelectedCatch(catchItem)
+                }}
+                className="bg-gradient-to-r from-emerald-500 to-green-600 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
+              >
+                Nunua Sasa
+              </button>
             </div>
           </div>
-
-          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {filteredCatches.map((catchItem) => (
-              <div
-                key={catchItem.id}
-                className="group bg-white/70 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/50 hover:shadow-2xl hover:-translate-y-2 transition-all cursor-pointer"
-                onClick={() => setSelectedCatch(catchItem)}
-              >
-                <div className="relative h-48 bg-gradient-to-br from-blue-400/20 to-ocean-500/20 rounded-xl mb-4 overflow-hidden">
-                  {catchItem.photo ? (
-                    <img
-                      src={catchItem.photo}
-                      alt={catchItem.title}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform"
-                    />
-                  ) : (
-                    <Fish className="w-24 h-24 text-white/30 absolute inset-0 m-auto" />
-                  )}
-                </div>
-
-                <h3 className="font-bold text-xl mb-3 line-clamp-1">{catchItem.title}</h3>
-
-                <div className="flex items-center space-x-2 mb-3">
-                  <div className="px-3 py-1 bg-ocean-100 text-ocean-800 rounded-full text-sm font-semibold">
-                    {catchItem.fish_type}
-                  </div>
-                  <div className="px-2 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-medium">
-                    {catchItem.location}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <p className="text-2xl font-bold text-emerald-600">
-                      TZS {catchItem.price_per_kg.toLocaleString()}
-                    </p>
-                    <p className="text-sm text-gray-500">kwa kg</p>
-                  </div>
-                  <div className="text-xl font-bold">{catchItem.quantity} kg</div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <User className="w-5 h-5" />
-                    <span>{catchItem.user.username}</span>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setSelectedCatch(catchItem)
-                    }}
-                    className="bg-gradient-to-r from-emerald-500 to-green-600 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
-                  >
-                    Nunua Sasa
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        ))}
       </div>
 
       {selectedCatch && (
