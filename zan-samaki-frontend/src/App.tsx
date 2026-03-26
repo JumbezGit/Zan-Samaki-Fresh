@@ -6,6 +6,7 @@ import Swal from 'sweetalert2'
 import AuthPage from '@/pages/AuthPage'
 import FisherDashboard from '@/pages/FisherDashboard'
 import BuyerDashboard from '@/pages/BuyerDashboard'
+import BuyerCartPage from '@/pages/BuyerCartPage'
 import BuyerOrdersPage from '@/pages/BuyerOrdersPage'
 import BuyerLivePage from '@/pages/BuyerLivePage'
 import AdminDashboard from '@/pages/AdminDashboard'
@@ -172,6 +173,7 @@ const App = () => {
         <Route path="/auth" element={!user ? <AuthPage setUser={setUser} setRole={setRole} /> : <Navigate to="/" />} />
         <Route path="/fisher" element={role === 'fisher' ? <Layout><FisherDashboard /></Layout> : <Navigate to="/" />} />
         <Route path="/buyer" element={role === 'buyer' ? <Layout><BuyerDashboard /></Layout> : <Navigate to="/" />} />
+        <Route path="/buyer/cart" element={role === 'buyer' ? <Layout><BuyerCartPage /></Layout> : <Navigate to="/" />} />
         <Route path="/buyer/orders" element={role === 'buyer' ? <Layout><BuyerOrdersPage /></Layout> : <Navigate to="/" />} />
         <Route path="/buyer/live" element={role === 'buyer' ? <Layout><BuyerLivePage /></Layout> : <Navigate to="/" />} />
         <Route

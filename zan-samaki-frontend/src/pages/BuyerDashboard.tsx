@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Search, Filter, MapPin, Fish, ShoppingCart, Phone, User } from 'lucide-react'
+import { Fish, MapPin, ShoppingCart, Phone, User } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useSearchParams } from 'react-router-dom'
 

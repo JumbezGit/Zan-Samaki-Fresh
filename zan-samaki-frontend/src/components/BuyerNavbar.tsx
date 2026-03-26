@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Fish, Menu, Package, Radio, Search, ShoppingCart } from 'lucide-react'
+import { Menu, Package, Radio, Search, ShoppingBasket, ShoppingCart } from 'lucide-react'
+import BrandLogo from '@/components/BrandLogo'
 import UserMenu from '@/components/UserMenu'
 
 interface BuyerNavbarProps {
@@ -27,12 +28,7 @@ const BuyerNavbar = ({ username, onLogout }: BuyerNavbarProps) => {
     <nav className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-ocean-100">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-between items-center h-16">
-          <Link to="/" className="flex items-center space-x-2">
-            <Fish className="w-8 h-8 text-ocean-600" />
-            <span className="font-bold text-xl bg-gradient-to-r from-ocean-600 to-blue-600 bg-clip-text text-transparent">
-              ZanSamaki
-            </span>
-          </Link>
+          <BrandLogo />
 
           <div className="hidden md:flex items-center space-x-4">
             <form onSubmit={handleSearch} className="relative">
@@ -58,6 +54,13 @@ const BuyerNavbar = ({ username, onLogout }: BuyerNavbarProps) => {
             >
               <Package className="w-5 h-5" />
               <span>Order</span>
+            </Link>
+            <Link
+              to="/buyer/cart"
+              className="flex items-center space-x-2 px-3 py-2 rounded-lg text-gray-700 hover:text-ocean-600 hover:bg-ocean-50 font-medium transition-all"
+            >
+              <ShoppingBasket className="w-5 h-5" />
+              <span>Cart</span>
             </Link>
             <Link
               to="/buyer/live"
