@@ -13,6 +13,8 @@ router.register(r'auctions', views.AuctionViewSet)
 urlpatterns = [
     path('auth/jwt/login/', views.LoginView.as_view()),
     path('auth/jwt/register/', views.RegisterView.as_view()),
+    path('auth/jwt/verify-otp/', views.VerifyOtpView.as_view()),
+    path('auth/jwt/resend-otp/', views.ResendOtpView.as_view()),
     path('', include(router.urls)),
 ]
 

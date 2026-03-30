@@ -13,6 +13,18 @@ class UserCreateSerializer(serializers.ModelSerializer):
         model = User
         fields = ('id', 'username', 'email', 'password', 'role', 'phone', 'location')
 
+    def validate_email(self, value):
+        email = value.strip().lower()
+        if User.objects.filter(email__iexact=email).exists():
+            raise serializers.ValidationError('Barua pepe hii tayari imetumika.')
+        return email
+
+    def validate_username(self, value):
+        username = value.strip()
+        if User.objects.filter(username__iexact=username).exists():
+            raise serializers.ValidationError('Jina la mtumiaji tayari limetumika.')
+        return username
+
     def create(self, validated_data):
         user = User.objects.create_user(
             username=validated_data['username'],
@@ -20,7 +32,9 @@ class UserCreateSerializer(serializers.ModelSerializer):
             password=validated_data['password'],
             role=validated_data.get('role', 'buyer'),
             phone=validated_data.get('phone', ''),
-            location=validated_data.get('location', 'Zanzibar')
+            location=validated_data.get('location', 'Zanzibar'),
+            is_active=False,
+            is_verified=False,
         )
         return user
 
