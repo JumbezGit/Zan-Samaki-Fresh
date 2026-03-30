@@ -10,12 +10,14 @@ import BuyerCartPage from '@/pages/BuyerCartPage'
 import BuyerOrdersPage from '@/pages/BuyerOrdersPage'
 import BuyerLivePage from '@/pages/BuyerLivePage'
 import AdminDashboard from '@/pages/AdminDashboard'
+import StaffDashboard from '@/pages/StaffDashboard'
 import SettingsPage from '@/pages/SettingsPage'
 import Layout from '@/components/Layout'
 import PublicNavbar from '@/components/PublicNavbar'
 import FisherNavbar from '@/components/FisherNavbar'
 import BuyerNavbar from '@/components/BuyerNavbar'
 import AdminNavbar from '@/components/AdminNavbar'
+import StaffNavbar from '@/components/StaffNavbar'
 import LoginModal from '@/components/LoginModal'
 
 interface AppUser {
@@ -23,11 +25,12 @@ interface AppUser {
   role: string
 }
 
-type UserRole = 'fisher' | 'buyer' | 'admin'
+type UserRole = 'fisher' | 'buyer' | 'staff' | 'admin'
 
 const getDashboardPath = (role: string) => {
   if (role === 'fisher') return '/fisher'
   if (role === 'buyer') return '/buyer'
+  if (role === 'staff') return '/staff'
   if (role === 'admin') return '/admin'
   return '/'
 }
@@ -35,6 +38,7 @@ const getDashboardPath = (role: string) => {
 const getRoleLabel = (role: UserRole) => {
   if (role === 'fisher') return 'Mvuvi'
   if (role === 'buyer') return 'Mnunuzi'
+  if (role === 'staff') return 'Staff'
   return 'Admin'
 }
 
@@ -140,11 +144,11 @@ const App = () => {
         return
       }
 
-      toast.error(`This option is only for ${targetRole === 'fisher' ? 'fishermen' : targetRole === 'buyer' ? 'buyers' : 'admins'}.`)
+      toast.error(`This option is only for ${targetRole === 'fisher' ? 'fishermen' : targetRole === 'buyer' ? 'buyers' : targetRole === 'staff' ? 'staff' : 'admins'}.`)
       return
     }
 
-    setLoginMode(targetRole === 'admin' ? 'login' : 'register')
+    setLoginMode(targetRole === 'admin' || targetRole === 'staff' ? 'login' : 'register')
     setSelectedRole(targetRole)
     setShowLogin(true)
   }
@@ -164,6 +168,10 @@ const App = () => {
 
     if (role === 'admin') {
       return <AdminNavbar username={user.username} onLogout={logout} onOpenSidebar={() => setAdminSidebarOpen(true)} />
+    }
+
+    if (role === 'staff') {
+      return <StaffNavbar username={user.username} onLogout={logout} />
     }
 
     return <PublicNavbar onLogin={openRoleLogin} />
@@ -195,6 +203,7 @@ const App = () => {
         <Route path="/buyer/cart" element={role === 'buyer' ? <Layout><BuyerCartPage /></Layout> : <Navigate to={user && role ? getDashboardPath(role) : '/'} replace />} />
         <Route path="/buyer/orders" element={role === 'buyer' ? <Layout><BuyerOrdersPage /></Layout> : <Navigate to={user && role ? getDashboardPath(role) : '/'} replace />} />
         <Route path="/buyer/live" element={role === 'buyer' ? <Layout><BuyerLivePage /></Layout> : <Navigate to={user && role ? getDashboardPath(role) : '/'} replace />} />
+        <Route path="/staff" element={role === 'staff' ? <Layout><StaffDashboard /></Layout> : <Navigate to={user && role ? getDashboardPath(role) : '/'} replace />} />
         <Route
           path="/admin"
           element={
@@ -245,7 +254,7 @@ const HomePage = ({
     
     </div>
 
-    <div id="login-sections" className="grid md:grid-cols-4 gap-8 mt-20 scroll-mt-24">
+    <div id="login-sections" className="grid gap-8 mt-20 scroll-mt-24 md:grid-cols-2 xl:grid-cols-4">
       <div className="bg-white/70 backdrop-blur-sm p-8 rounded-2xl shadow-xl border border-white/50">
         <Fish className="w-12 h-12 text-ocean-600 mx-auto mb-4" />
         <h3 className="text-2xl font-bold mb-4 text-center">Mvuvi</h3>
@@ -271,7 +280,7 @@ const HomePage = ({
       <div className="bg-white/70 backdrop-blur-sm p-8 rounded-2xl shadow-xl border border-white/50">
         <Shield className="w-12 h-12 text-ocean-600 mx-auto mb-4" />
         <h3 className="text-2xl font-bold mb-4 text-center">Admin</h3>
-        <p className="text-gray-600 mb-6 text-center">Dhibiti uvuvi na ruhusu listings</p>
+        <p className="text-gray-600 mb-6 text-center">Dhibiti uvuvi, staff, na solar coolbox zote.</p>
         <button
           onClick={() => onRoleAction('admin')}
           className="w-full bg-ocean-600 text-white py-3 rounded-xl font-semibold hover:bg-ocean-700"
@@ -282,9 +291,9 @@ const HomePage = ({
       <div className="bg-white/70 backdrop-blur-sm p-8 rounded-2xl shadow-xl border border-white/50">
         <Users className="w-12 h-12 text-ocean-600 mx-auto mb-4" />
         <h3 className="text-2xl font-bold mb-4 text-center">Staff</h3>
-        <p className="text-gray-600 mb-6 text-center">Ingia kama staff kusimamia shughuli za mfumo.</p>
+        <p className="text-gray-600 mb-6 text-center">Toa taarifa ya hali ya coolbox kwa Malindi, Mkokotoni, Chwaka, na Paje.</p>
         <button
-          onClick={() => onRoleAction('admin')}
+          onClick={() => onRoleAction('staff')}
           className="w-full bg-ocean-600 text-white py-3 rounded-xl font-semibold hover:bg-ocean-700"
         >
           Staff Login

@@ -15,13 +15,14 @@ import {
 import toast from 'react-hot-toast'
 
 type AdminSection = 'overview' | 'catches' | 'users' | 'orders' | 'coolbox' | 'settings'
-type UserRole = 'fisher' | 'buyer' | 'admin'
+type UserRole = 'fisher' | 'buyer' | 'staff' | 'admin'
+type CoolBoxCondition = 'good' | 'bad' | 'broken'
 
 interface AdminUser {
   id: number
   username: string
   email: string
-  role: 'fisher' | 'buyer' | 'admin'
+  role: UserRole
   location: string
   phone: string
 }
@@ -50,13 +51,14 @@ interface OrderRecord {
   catch: FishCatchRecord
 }
 
-interface CoolBoxRentalRecord {
+interface SolarCoolBoxRecord {
   id: number
-  start_date: string
-  days: number
-  price: string
-  status: string
-  user: AdminUser
+  location: string
+  condition_status: CoolBoxCondition
+  notes: string
+  updated_at: string
+  assigned_staff: AdminUser | null
+  assigned_staff_id: number | null
 }
 
 const sections: Array<{ id: AdminSection; label: string; icon: typeof Shield }> = [
@@ -64,7 +66,7 @@ const sections: Array<{ id: AdminSection; label: string; icon: typeof Shield }> 
   { id: 'catches', label: 'Catch Approval', icon: Fish },
   { id: 'users', label: 'Users', icon: Users },
   { id: 'orders', label: 'Orders', icon: ShoppingCart },
-  { id: 'coolbox', label: 'CoolBox', icon: Snowflake },
+  { id: 'coolbox', label: 'Solar CoolBox', icon: Snowflake },
   { id: 'settings', label: 'Settings', icon: Settings }
 ]
 
@@ -83,17 +85,35 @@ const formatDate = (value: string) =>
     day: 'numeric'
   })
 
+const formatDateTime = (value: string) =>
+  new Date(value).toLocaleString('en-GB', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+
 const statusClass = (status: string) => {
-  if (status === 'approved' || status === 'paid' || status === 'delivered' || status === 'requested') {
+  if (status === 'approved' || status === 'paid' || status === 'delivered' || status === 'good') {
     return 'bg-emerald-100 text-emerald-800'
   }
-  if (status === 'pending' || status === 'reserved') {
+  if (status === 'pending' || status === 'reserved' || status === 'bad') {
     return 'bg-yellow-100 text-yellow-800'
   }
   if (status === 'sold') {
     return 'bg-blue-100 text-blue-800'
   }
+  if (status === 'broken') {
+    return 'bg-red-100 text-red-700'
+  }
   return 'bg-gray-100 text-gray-700'
+}
+
+const conditionLabel: Record<CoolBoxCondition, string> = {
+  good: 'Good',
+  bad: 'Bad',
+  broken: 'Broken'
 }
 
 interface AdminDashboardProps {
@@ -107,11 +127,13 @@ const AdminDashboard = ({ isSidebarOpen, onCloseSidebar, initialSection = 'overv
   const [users, setUsers] = useState<AdminUser[]>([])
   const [catches, setCatches] = useState<FishCatchRecord[]>([])
   const [orders, setOrders] = useState<OrderRecord[]>([])
-  const [rentals, setRentals] = useState<CoolBoxRentalRecord[]>([])
+  const [coolboxes, setCoolboxes] = useState<SolarCoolBoxRecord[]>([])
+  const [assignmentDrafts, setAssignmentDrafts] = useState<Record<number, string>>({})
   const [loading, setLoading] = useState(true)
   const [busyKey, setBusyKey] = useState<string | null>(null)
 
   const token = localStorage.getItem('token')
+  const staffUsers = useMemo(() => users.filter((item) => item.role === 'staff'), [users])
 
   const request = async (path: string, options: RequestInit = {}) => {
     const res = await fetch(path, {
@@ -134,17 +156,28 @@ const AdminDashboard = ({ isSidebarOpen, onCloseSidebar, initialSection = 'overv
     setLoading(true)
 
     try {
-      const [usersData, catchesData, ordersData, rentalsData] = await Promise.all([
+      const [usersData, catchesData, ordersData, coolboxesData] = await Promise.all([
         request('/api/users/'),
         request('/api/catches/'),
         request('/api/orders/'),
-        request('/api/coolbox/')
+        request('/api/solar-coolboxes/')
       ])
 
-      setUsers(Array.isArray(usersData) ? usersData : [])
-      setCatches(Array.isArray(catchesData) ? catchesData : [])
-      setOrders(Array.isArray(ordersData) ? ordersData : [])
-      setRentals(Array.isArray(rentalsData) ? rentalsData : [])
+      const nextUsers = Array.isArray(usersData) ? usersData : []
+      const nextCatches = Array.isArray(catchesData) ? catchesData : []
+      const nextOrders = Array.isArray(ordersData) ? ordersData : []
+      const nextCoolboxes = Array.isArray(coolboxesData) ? coolboxesData : []
+
+      setUsers(nextUsers)
+      setCatches(nextCatches)
+      setOrders(nextOrders)
+      setCoolboxes(nextCoolboxes)
+      setAssignmentDrafts(
+        nextCoolboxes.reduce<Record<number, string>>((drafts, item) => {
+          drafts[item.id] = item.assigned_staff_id ? String(item.assigned_staff_id) : ''
+          return drafts
+        }, {})
+      )
     } catch (error) {
       toast.error('Failed to load admin data')
     } finally {
@@ -163,11 +196,12 @@ const AdminDashboard = ({ isSidebarOpen, onCloseSidebar, initialSection = 'overv
   const stats = useMemo(() => {
     const pendingCatches = catches.filter((item) => !item.is_approved).length
     const fisherCount = users.filter((item) => item.role === 'fisher').length
-    const buyerCount = users.filter((item) => item.role === 'buyer').length
+    const staffCount = users.filter((item) => item.role === 'staff').length
+    const brokenCoolboxes = coolboxes.filter((item) => item.condition_status === 'broken').length
     const orderRevenue = orders.reduce((sum, item) => sum + Number(item.total_price || 0), 0)
 
-    return { pendingCatches, fisherCount, buyerCount, orderRevenue }
-  }, [catches, orders, users])
+    return { pendingCatches, fisherCount, staffCount, brokenCoolboxes, orderRevenue }
+  }, [catches, coolboxes, orders, users])
 
   const runAction = async (key: string, action: () => Promise<void>, successMessage: string) => {
     setBusyKey(key)
@@ -203,8 +237,11 @@ const AdminDashboard = ({ isSidebarOpen, onCloseSidebar, initialSection = 'overv
     })
   }
 
-  const updateRental = async (item: CoolBoxRentalRecord, patch: Partial<CoolBoxRentalRecord>) => {
-    await request(`/api/coolbox/${item.id}/`, {
+  const updateCoolBox = async (
+    item: SolarCoolBoxRecord,
+    patch: Partial<Pick<SolarCoolBoxRecord, 'condition_status' | 'notes'>> & { assigned_staff_id?: number | null }
+  ) => {
+    await request(`/api/solar-coolboxes/${item.id}/`, {
       method: 'PATCH',
       body: JSON.stringify(patch)
     })
@@ -215,7 +252,8 @@ const AdminDashboard = ({ isSidebarOpen, onCloseSidebar, initialSection = 'overv
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Pending Catches" value={stats.pendingCatches} tone="amber" icon={Fish} />
         <StatCard label="Fishers" value={stats.fisherCount} tone="sky" icon={Users} />
-        <StatCard label="Buyers" value={stats.buyerCount} tone="emerald" icon={ShoppingCart} />
+        <StatCard label="Staff" value={stats.staffCount} tone="emerald" icon={User} />
+        <StatCard label="Broken CoolBoxes" value={stats.brokenCoolboxes} tone="rose" icon={Snowflake} />
         <StatCard label="Order Revenue" value={formatCurrency(stats.orderRevenue)} tone="slate" icon={Shield} />
       </div>
 
@@ -251,20 +289,24 @@ const AdminDashboard = ({ isSidebarOpen, onCloseSidebar, initialSection = 'overv
           </div>
         </Panel>
 
-        <Panel title="Recent Orders">
+        <Panel title="Solar CoolBox Status">
           <div className="space-y-3">
-            {orders.slice(0, 5).map((item) => (
+            {coolboxes.map((item) => (
               <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="font-semibold text-slate-900">{item.catch.title}</p>
-                <p className="text-sm text-slate-600">
-                  Buyer: {item.buyer.username} • {formatCurrency(item.total_price)}
-                </p>
-                <span className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusClass(item.status)}`}>
-                  {item.status}
-                </span>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-semibold text-slate-900">{item.location}</p>
+                    <p className="text-sm text-slate-600">
+                      Staff: {item.assigned_staff?.username || 'Unassigned'}
+                    </p>
+                    <p className="text-sm text-slate-500">Updated {formatDateTime(item.updated_at)}</p>
+                  </div>
+                  <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusClass(item.condition_status)}`}>
+                    {conditionLabel[item.condition_status]}
+                  </span>
+                </div>
               </div>
             ))}
-            {orders.length === 0 && <EmptyState text="No orders recorded yet." />}
           </div>
         </Panel>
       </div>
@@ -352,7 +394,7 @@ const AdminDashboard = ({ isSidebarOpen, onCloseSidebar, initialSection = 'overv
                 <p className="text-sm text-slate-500">{item.phone || 'No phone number'}</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                {(['fisher', 'buyer', 'admin'] as UserRole[]).map((nextRole) => (
+                {(['fisher', 'buyer', 'staff', 'admin'] as UserRole[]).map((nextRole) => (
                   <button
                     key={nextRole}
                     onClick={() =>
@@ -424,43 +466,95 @@ const AdminDashboard = ({ isSidebarOpen, onCloseSidebar, initialSection = 'overv
   )
 
   const renderCoolBox = () => (
-    <Panel title="CoolBox Rentals">
+    <Panel title="Solar CoolBox Management">
       <div className="space-y-4">
-        {rentals.map((item) => (
+        {coolboxes.map((item) => (
           <div key={item.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="grid gap-5 xl:grid-cols-[1.2fr_1fr]">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">{item.user.username}</h3>
-                <p className="text-sm text-slate-600">
-                  {item.days} day(s) • {formatCurrency(item.price)} • Start {formatDate(item.start_date)}
+                <div className="flex items-center gap-3">
+                  <h3 className="text-lg font-bold text-slate-900">{item.location}</h3>
+                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClass(item.condition_status)}`}>
+                    {conditionLabel[item.condition_status]}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm text-slate-600">
+                  Assigned staff: {item.assigned_staff?.username || 'Nobody assigned yet'}
                 </p>
+                <p className="text-sm text-slate-500">Last update: {formatDateTime(item.updated_at)}</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {(['good', 'bad', 'broken'] as CoolBoxCondition[]).map((nextCondition) => (
+                    <button
+                      key={nextCondition}
+                      onClick={() =>
+                        void runAction(
+                          `coolbox-condition-${item.id}-${nextCondition}`,
+                          () => updateCoolBox(item, { condition_status: nextCondition }),
+                          'CoolBox condition updated'
+                        )
+                      }
+                      disabled={busyKey === `coolbox-condition-${item.id}-${nextCondition}` || item.condition_status === nextCondition}
+                      className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+                        item.condition_status === nextCondition
+                          ? 'bg-ocean-600 text-white'
+                          : 'border border-slate-200 bg-slate-50 text-slate-700'
+                      } disabled:opacity-50`}
+                    >
+                      {conditionLabel[nextCondition]}
+                    </button>
+                  ))}
+                </div>
+                {item.notes && (
+                  <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                    {item.notes}
+                  </div>
+                )}
               </div>
-              <div className="flex flex-wrap gap-2">
-                {(['requested', 'approved', 'collected'] as const).map((nextStatus) => (
-                  <button
-                    key={nextStatus}
-                    onClick={() =>
-                      void runAction(
-                        `rental-${item.id}-${nextStatus}`,
-                        () => updateRental(item, { status: nextStatus }),
-                        'Rental status updated'
-                      )
-                    }
-                    disabled={busyKey === `rental-${item.id}-${nextStatus}` || item.status === nextStatus}
-                    className={`rounded-xl px-4 py-2 text-sm font-semibold ${
-                      item.status === nextStatus
-                        ? 'bg-ocean-600 text-white'
-                        : 'border border-slate-200 bg-slate-50 text-slate-700'
-                    } disabled:opacity-50`}
-                  >
-                    {nextStatus}
-                  </button>
-                ))}
+
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Assign Staff</p>
+                <select
+                  value={assignmentDrafts[item.id] ?? ''}
+                  onChange={(event) =>
+                    setAssignmentDrafts((current) => ({
+                      ...current,
+                      [item.id]: event.target.value
+                    }))
+                  }
+                  className="mt-4 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none"
+                >
+                  <option value="">No staff assigned</option>
+                  {staffUsers.map((staff) => (
+                    <option key={staff.id} value={staff.id}>
+                      {staff.username} {staff.location ? `- ${staff.location}` : ''}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={() =>
+                    void runAction(
+                      `coolbox-assign-${item.id}`,
+                      () =>
+                        updateCoolBox(item, {
+                          assigned_staff_id: assignmentDrafts[item.id] ? Number(assignmentDrafts[item.id]) : null
+                        }),
+                      'Staff assignment updated'
+                    )
+                  }
+                  disabled={busyKey === `coolbox-assign-${item.id}`}
+                  className="mt-4 w-full rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
+                >
+                  {busyKey === `coolbox-assign-${item.id}` ? 'Saving...' : 'Save assignment'}
+                </button>
+                {staffUsers.length === 0 && (
+                  <p className="mt-3 text-sm text-amber-700">
+                    No staff users yet. Change a user role to `staff` in User Management first.
+                  </p>
+                )}
               </div>
             </div>
           </div>
         ))}
-        {rentals.length === 0 && <EmptyState text="No coolbox rentals found." />}
       </div>
     </Panel>
   )
@@ -479,8 +573,12 @@ const AdminDashboard = ({ isSidebarOpen, onCloseSidebar, initialSection = 'overv
               <p className="mt-1 text-lg font-medium text-slate-800">{users.filter((item) => item.role === 'admin').length}</p>
             </div>
             <div>
-              <p className="text-sm uppercase tracking-wide text-slate-500">Total Users</p>
-              <p className="mt-1 text-lg font-medium text-slate-800">{users.length}</p>
+              <p className="text-sm uppercase tracking-wide text-slate-500">Staff Users</p>
+              <p className="mt-1 text-lg font-medium text-slate-800">{staffUsers.length}</p>
+            </div>
+            <div>
+              <p className="text-sm uppercase tracking-wide text-slate-500">Solar CoolBoxes</p>
+              <p className="mt-1 text-lg font-medium text-slate-800">{coolboxes.length}</p>
             </div>
           </div>
         </section>
@@ -491,8 +589,8 @@ const AdminDashboard = ({ isSidebarOpen, onCloseSidebar, initialSection = 'overv
             <h3 className="text-xl font-semibold text-slate-900">Workspace Settings</h3>
           </div>
           <p className="text-slate-600">
-            Admin settings now live inside the dashboard so you can keep using the same fixed sidenav while managing
-            the system.
+            Admin can now assign staff to solar coolboxes in Malindi, Mkokotoni, Chwaka, and Paje, then monitor the
+            latest condition updates from the same dashboard.
           </p>
         </section>
       </div>
@@ -577,16 +675,16 @@ const AdminDashboard = ({ isSidebarOpen, onCloseSidebar, initialSection = 'overv
       </aside>
 
       <div className="space-y-6 p-4 md:p-6 lg:pl-[304px]">
-        <div className="rounded-[1rem] border border-slate-200 bg-white/85 p-6  backdrop-blur-sm">
+        <div className="rounded-[1rem] border border-slate-200 bg-white/85 p-6 backdrop-blur-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-ocean-600">Admin Panel</p>
-              <h2 className="mt-2 text-3xl font-bold text-slate-950">Marketplace Control Center</h2>
+              <h2 className="mt-2 text-3xl font-bold text-slate-950">Solar CoolBox Control Center</h2>
             </div>
             <div className="flex flex-wrap gap-3">
               <SummaryChip label="Users" value={users.length} icon={Users} />
-              <SummaryChip label="Orders" value={orders.length} icon={ShoppingCart} />
-              <SummaryChip label="Pending" value={stats.pendingCatches} icon={XCircle} />
+              <SummaryChip label="Staff" value={staffUsers.length} icon={User} />
+              <SummaryChip label="Broken" value={stats.brokenCoolboxes} icon={XCircle} />
             </div>
           </div>
         </div>
@@ -618,24 +716,27 @@ const StatCard = ({
 }: {
   label: string
   value: string | number
-  tone: 'amber' | 'sky' | 'emerald' | 'slate'
+  tone: 'amber' | 'sky' | 'emerald' | 'slate' | 'rose'
   icon: typeof Shield
 }) => {
   const tones = {
     amber: 'from-amber-400 to-orange-500',
     sky: 'from-sky-500 to-cyan-600',
     emerald: 'from-emerald-500 to-green-600',
-    slate: 'from-slate-700 to-slate-900'
+    slate: 'from-slate-700 to-slate-900',
+    rose: 'from-rose-500 to-red-600'
   }
 
   return (
-    <div className={`rounded-2xl bg-gradient-to-br ${tones[tone]} p-6 text-white shadow-xl`}>
+    <div className={`min-w-0 overflow-hidden rounded-2xl bg-gradient-to-br ${tones[tone]} p-5 text-white shadow-lg`}>
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-white/80">{label}</p>
-          <p className="mt-3 text-3xl font-bold">{value}</p>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold uppercase tracking-wide text-white/80">{label}</p>
+          <p className="mt-3 max-w-full overflow-hidden whitespace-nowrap text-[clamp(0.8rem,1.6vw,1.5rem)] font-bold leading-tight tracking-tight">
+            {value}
+          </p>
         </div>
-        <Icon className="h-10 w-10 text-white/70" />
+        <Icon className="h-8 w-8 shrink-0 text-white/70" />
       </div>
     </div>
   )

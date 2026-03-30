@@ -11,11 +11,11 @@ from django.utils import timezone
 from datetime import timedelta
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-from .models import FishCatch, Order, CoolBoxRental, Auction, AuctionBid
+from .models import FishCatch, Order, CoolBoxRental, Auction, AuctionBid, SolarCoolBox
 from .serializers import (
     FishCatchSerializer, CreateFishCatchSerializer, 
     OrderSerializer, CoolBoxRentalSerializer, UserSerializer, UserCreateSerializer,
-    AuctionSerializer, CreateAuctionSerializer
+    AuctionSerializer, CreateAuctionSerializer, SolarCoolBoxSerializer
 )
 
 User = get_user_model()
@@ -413,6 +413,48 @@ class CoolBoxRentalViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+
+class SolarCoolBoxViewSet(viewsets.ModelViewSet):
+    queryset = SolarCoolBox.objects.all()
+    serializer_class = SolarCoolBoxSerializer
+    permission_classes = [IsAuthenticated]
+    http_method_names = ['get', 'patch', 'head', 'options']
+
+    def get_queryset(self):
+        queryset = SolarCoolBox.objects.select_related('assigned_staff').order_by('location')
+
+        if self.request.user.role == 'admin':
+            return queryset
+
+        if self.request.user.role == 'staff':
+            return queryset.filter(assigned_staff=self.request.user)
+
+        return SolarCoolBox.objects.none()
+
+    def partial_update(self, request, *args, **kwargs):
+        coolbox = self.get_object()
+
+        if request.user.role == 'admin':
+            serializer = self.get_serializer(coolbox, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
+
+        if request.user.role != 'staff' or coolbox.assigned_staff_id != request.user.id:
+            return Response({'detail': 'Huna ruhusa kwa coolbox hii.'}, status=status.HTTP_403_FORBIDDEN)
+
+        allowed_fields = {'condition_status', 'notes'}
+        if any(field not in allowed_fields for field in request.data.keys()):
+            return Response(
+                {'detail': 'Staff anaweza kubadilisha hali ya coolbox na maelezo tu.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = self.get_serializer(coolbox, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
 
 class AuctionViewSet(viewsets.ModelViewSet):

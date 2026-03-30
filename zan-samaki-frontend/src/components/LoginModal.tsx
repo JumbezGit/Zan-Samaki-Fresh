@@ -5,12 +5,13 @@ import { useForm } from 'react-hook-form'
 import { Eye, EyeOff, Lock, Mail, UserPlus } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-type UserRole = 'fisher' | 'buyer' | 'admin'
+type UserRole = 'fisher' | 'buyer' | 'staff' | 'admin'
 type RegistrationRole = 'fisher' | 'buyer'
 
 const roleLabels: Record<UserRole, string> = {
   fisher: 'Mvuvi',
   buyer: 'Mnunuzi',
+  staff: 'Staff',
   admin: 'Admin'
 }
 
@@ -36,21 +37,21 @@ const LoginModal = ({
   initialRole = 'buyer'
 }: LoginModalProps) => {
   const [isLogin, setIsLogin] = useState(initialMode === 'login')
-  const [role, setRole] = useState<RegistrationRole>(initialRole === 'admin' ? 'buyer' : initialRole)
+  const [role, setRole] = useState<RegistrationRole>(initialRole === 'admin' || initialRole === 'staff' ? 'buyer' : initialRole)
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const { register, handleSubmit, formState: { errors }, reset } = useForm<AuthFormValues>()
   const activeRole = isLogin ? initialRole : role
   const authTitle = `${roleLabels[activeRole]}-${isLogin ? 'Ingia' : 'Jisajili'}`
-  const allowRegistration = initialRole !== 'admin'
+  const allowRegistration = initialRole !== 'admin' && initialRole !== 'staff'
 
   useEffect(() => {
     if (!isOpen) {
       return
     }
 
-    setIsLogin(initialRole === 'admin' ? true : initialMode === 'login')
-    setRole(initialRole === 'admin' ? 'buyer' : initialRole)
+    setIsLogin(initialRole === 'admin' || initialRole === 'staff' ? true : initialMode === 'login')
+    setRole(initialRole === 'admin' || initialRole === 'staff' ? 'buyer' : initialRole)
     setShowPassword(false)
     reset()
   }, [initialMode, initialRole, isOpen, reset])

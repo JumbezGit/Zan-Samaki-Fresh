@@ -2,7 +2,7 @@ from rest_framework import serializers
 from datetime import timedelta
 from django.utils import timezone
 from django.contrib.auth import get_user_model
-from .models import FishCatch, Order, CoolBoxRental, Auction, AuctionBid
+from .models import FishCatch, Order, CoolBoxRental, Auction, AuctionBid, SolarCoolBox
 
 User = get_user_model()
 
@@ -101,4 +101,26 @@ class CoolBoxRentalSerializer(serializers.ModelSerializer):
     class Meta:
         model = CoolBoxRental
         fields = '__all__'
+
+
+class SolarCoolBoxSerializer(serializers.ModelSerializer):
+    assigned_staff = UserSerializer(read_only=True)
+    assigned_staff_id = serializers.PrimaryKeyRelatedField(
+        source='assigned_staff',
+        queryset=User.objects.filter(role='staff'),
+        allow_null=True,
+        required=False,
+    )
+
+    class Meta:
+        model = SolarCoolBox
+        fields = (
+            'id',
+            'location',
+            'condition_status',
+            'notes',
+            'updated_at',
+            'assigned_staff',
+            'assigned_staff_id',
+        )
 

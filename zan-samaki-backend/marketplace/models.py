@@ -6,6 +6,7 @@ class User(AbstractUser):
     ROLE_CHOICES = [
         ('fisher', 'Fisher'),
         ('buyer', 'Buyer'),
+        ('staff', 'Staff'),
         ('admin', 'Admin'),
     ]
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='buyer')
@@ -66,6 +67,35 @@ class CoolBoxRental(models.Model):
     days = models.IntegerField(default=1)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=3000)
     status = models.CharField(max_length=20, default='requested')
+
+
+class SolarCoolBox(models.Model):
+    LOCATION_CHOICES = [
+        ('Malindi', 'Malindi'),
+        ('Mkokotoni', 'Mkokotoni'),
+        ('Chwaka', 'Chwaka'),
+        ('Paje', 'Paje'),
+    ]
+    CONDITION_CHOICES = [
+        ('good', 'Good'),
+        ('bad', 'Bad'),
+        ('broken', 'Broken'),
+    ]
+
+    location = models.CharField(max_length=20, choices=LOCATION_CHOICES, unique=True)
+    assigned_staff = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='assigned_coolboxes',
+    )
+    condition_status = models.CharField(max_length=10, choices=CONDITION_CHOICES, default='good')
+    notes = models.TextField(blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Solar CoolBox - {self.location}"
 
 class Auction(models.Model):
     STATUS_CHOICES = [

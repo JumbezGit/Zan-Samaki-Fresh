@@ -2,7 +2,7 @@ import { Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import BrandLogo from '@/components/BrandLogo'
 
-type UserRole = 'fisher' | 'buyer' | 'admin'
+type UserRole = 'fisher' | 'buyer' | 'staff' | 'admin'
 
 interface PublicNavbarProps {
   onLogin: (role: UserRole) => void
@@ -63,6 +63,12 @@ const PublicNavbar = ({ onLogin }: PublicNavbarProps) => {
                 className={mobileButtonClass('admin')}
               >
                 Admin Ingia
+              </button>
+              <button
+                onClick={() => handleMobileRole('staff')}
+                className={mobileButtonClass('staff')}
+              >
+                Staff Ingia
               </button>
             </div>
           </div>
