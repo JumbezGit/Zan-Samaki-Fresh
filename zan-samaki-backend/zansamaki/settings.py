@@ -215,4 +215,5 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # Email for development
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = '242bit002@suza.ac.tz'
 
