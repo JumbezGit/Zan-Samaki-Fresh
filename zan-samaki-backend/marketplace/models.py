@@ -65,11 +65,31 @@ class Order(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 class CoolBoxRental(models.Model):
+    LOCATION_CHOICES = [
+        ('Malindi', 'Malindi'),
+        ('Mkokotoni', 'Mkokotoni'),
+        ('Chwaka', 'Chwaka'),
+        ('Paje', 'Paje'),
+    ]
+    STATUS_CHOICES = [
+        ('requested', 'Requested'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    catch = models.ForeignKey(
+        FishCatch,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='coolbox_requests',
+    )
+    location = models.CharField(max_length=20, choices=LOCATION_CHOICES, default='Malindi')
     start_date = models.DateField(default=timezone.now)
     days = models.IntegerField(default=1)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=3000)
-    status = models.CharField(max_length=20, default='requested')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='requested')
 
 
 class SolarCoolBox(models.Model):

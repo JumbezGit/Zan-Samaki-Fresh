@@ -35,13 +35,6 @@ const getDashboardPath = (role: string) => {
   return '/'
 }
 
-const getRoleLabel = (role: UserRole) => {
-  if (role === 'fisher') return 'Mvuvi'
-  if (role === 'buyer') return 'Mnunuzi'
-  if (role === 'staff') return 'Staff'
-  return 'Admin'
-}
-
 const App = () => {
   const [user, setUser] = useState<AppUser | null>(null)
   const [role, setRole] = useState('')
@@ -112,22 +105,15 @@ const App = () => {
     toast.success('Umetoka!')
   }
 
-  const handleLoginSuccess = async (expectedRole: UserRole) => {
+  const handleLoginSuccess = async (_expectedRole: UserRole) => {
     const loggedInUser = await fetchUser()
 
     if (loggedInUser?.role) {
-      if (loggedInUser.role !== expectedRole) {
-        localStorage.removeItem('token')
-        setUser(null)
-        setRole('')
-        toast.error(`This account belongs to ${getRoleLabel(loggedInUser.role)}. Please use the ${getRoleLabel(loggedInUser.role)} login form.`)
-        return false
-      }
-
       navigate(getDashboardPath(loggedInUser.role))
       return true
     }
 
+    toast.error('Unable to load your account after login. Please try again.')
     return false
   }
 

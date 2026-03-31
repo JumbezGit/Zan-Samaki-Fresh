@@ -10,6 +10,17 @@ interface Catch {
   price_per_kg: number
   status: string
   is_approved: boolean
+  location: string
+}
+
+interface CoolBoxRequest {
+  id: number
+  start_date: string
+  days: number
+  price: string
+  status: string
+  location: string
+  active_catch: Catch | null
 }
 
 interface Auction {
@@ -28,10 +39,13 @@ interface Auction {
 }
 
 const FisherDashboard = () => {
+  const COOLBOX_LOCATIONS = ['Malindi', 'Mkokotoni', 'Chwaka', 'Paje']
   const [catches, setCatches] = useState<Catch[]>([])
   const [auctions, setAuctions] = useState<Auction[]>([])
+  const [coolBoxRequests, setCoolBoxRequests] = useState<CoolBoxRequest[]>([])
   const [showForm, setShowForm] = useState(false)
   const [showAuctionForm, setShowAuctionForm] = useState(false)
+  const [showCoolBoxForm, setShowCoolBoxForm] = useState(false)
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -46,6 +60,11 @@ const FisherDashboard = () => {
     catch: '',
     initial_price: '',
     increment_gap: '1000'
+  })
+  const [coolBoxData, setCoolBoxData] = useState({
+    catch_id: '',
+    days: '1',
+    location: 'Malindi'
   })
   const [earnings, setEarnings] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -66,6 +85,7 @@ const FisherDashboard = () => {
   useEffect(() => {
     void fetchCatches()
     void fetchAuctions()
+    void fetchCoolBoxRequests()
     setEarnings(125000 + Math.floor(Math.random() * 25000))
   }, [])
 
@@ -187,24 +207,75 @@ const FisherDashboard = () => {
     }
   }
 
-  const requestCoolBox = async () => {
+  const fetchCoolBoxRequests = async () => {
     try {
       const token = localStorage.getItem('token')
-      await fetch('/api/coolbox/', {
+      const res = await fetch('/api/coolbox/', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await res.json()
+      setCoolBoxRequests(Array.isArray(data) ? data : [])
+    } catch (err) {
+      toast.error('Tatizo la kupakia coolbox')
+    }
+  }
+
+  const openCoolBoxForm = () => {
+    if (eligibleCatches.length === 0) {
+      toast.error('Pakia samaki waliothibitishwa na waliopo sokoni kwanza kabla ya kuomba coolbox.')
+      return
+    }
+
+    setCoolBoxData({
+      catch_id: String(eligibleCatches[0].id),
+      days: '1',
+      location: 'Malindi'
+    })
+    setShowCoolBoxForm(true)
+  }
+
+  const requestCoolBox = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/coolbox/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ days: 1 })
+        body: JSON.stringify({
+          days: Number(coolBoxData.days),
+          catch_id: Number(coolBoxData.catch_id),
+          location: coolBoxData.location
+        })
       })
-      toast.success('Ombi la sanduku la baridi limewasilishwa!')
+
+      if (res.ok) {
+        toast.success('Ombi la sanduku la baridi limewasilishwa!')
+        setShowCoolBoxForm(false)
+        setCoolBoxData({
+          catch_id: '',
+          days: '1',
+          location: 'Malindi'
+        })
+        void fetchCoolBoxRequests()
+        void fetchCatches()
+      } else {
+        const data = await res.json().catch(() => null)
+        toast.error(data?.detail || data?.non_field_errors?.[0] || 'Tatizo la ombi la sanduku')
+      }
     } catch (err) {
       toast.error('Tatizo la ombi la sanduku')
+    } finally {
+      setLoading(false)
     }
   }
 
   const eligibleCatches = catches.filter((catchItem) => catchItem.status === 'available' && catchItem.is_approved)
+  const activeCoolBoxRequests = coolBoxRequests.filter((request) => request.active_catch)
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12">
@@ -253,13 +324,56 @@ const FisherDashboard = () => {
           </button>
 
           <button
-            onClick={requestCoolBox}
+            onClick={openCoolBoxForm}
             className="flex w-full items-center space-x-3 rounded-2xl bg-gradient-to-r from-yellow-500 to-orange-600 p-6 text-lg font-semibold text-white shadow-xl transition-all hover:shadow-2xl"
           >
             <AlertCircle className="w-6 h-6" />
             <span>Omba Sanduku la Baridi</span>
           </button>
         </div>
+      </div>
+
+      <div className="mt-12">
+        <h2 className="mb-8 flex items-center space-x-3 text-3xl font-bold">
+          <AlertCircle className="w-10 h-10" />
+          <span>Samaki Waliohifadhiwa Kwenye CoolBox</span>
+        </h2>
+        {activeCoolBoxRequests.length === 0 ? (
+          <div className="rounded-2xl border border-white/50 bg-white/70 p-8 text-center text-gray-600 shadow-lg">
+            Hakuna samaki walio kwenye coolbox kwa sasa. Samaki wakiuzwa, kuisha, au kuondolewa hawataonekana hapa tena.
+          </div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {activeCoolBoxRequests.map((request) => {
+              const activeCatch = request.active_catch
+
+              if (!activeCatch) {
+                return null
+              }
+
+              return (
+                <div key={request.id} className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-lg">
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-xl font-bold">{activeCatch.title}</h3>
+                      <p className="mt-1 text-sm text-gray-500">{activeCatch.location}</p>
+                    </div>
+                    <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-800">
+                      {request.status}
+                    </span>
+                  </div>
+                  <div className="space-y-2 text-sm text-gray-600">
+                    <p>Aina ya samaki: <span className="font-semibold">{activeCatch.fish_type}</span></p>
+                    <p>Coolbox location: <span className="font-semibold">{request.location}</span></p>
+                    <p>Kilo zilizopo: <span className="font-semibold">{activeCatch.quantity} kg</span></p>
+                    <p>Muda wa coolbox: <span className="font-semibold">{request.days} siku</span></p>
+                    <p>Gharama: <span className="font-semibold">TZS {Number(request.price).toLocaleString()}</span></p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       <div className="mt-12">
@@ -511,6 +625,86 @@ const FisherDashboard = () => {
                 <button
                   type="button"
                   onClick={() => setShowForm(false)}
+                  className="flex-1 rounded-xl bg-gray-200 px-6 py-4 font-semibold text-gray-800 transition-all hover:bg-gray-300"
+                >
+                  Ghairi
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showCoolBoxForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-xl rounded-2xl bg-white p-8 shadow-2xl">
+            <div className="mb-8 flex items-center justify-between">
+              <h2 className="text-3xl font-bold">Omba CoolBox</h2>
+              <button onClick={() => setShowCoolBoxForm(false)} className="rounded-xl p-2 hover:bg-gray-200">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={requestCoolBox} className="space-y-6">
+              <div>
+                <label className="mb-2 block font-semibold">Chagua Samaki wa Kuhifadhi</label>
+                <select
+                  value={coolBoxData.catch_id}
+                  onChange={(e) => setCoolBoxData({ ...coolBoxData, catch_id: e.target.value })}
+                  className="w-full rounded-xl border border-gray-200 p-4 focus:ring-2 focus:ring-ocean-500"
+                  required
+                >
+                  <option value="">Chagua samaki</option>
+                  {eligibleCatches.map((catchItem) => (
+                    <option key={catchItem.id} value={catchItem.id}>
+                      {catchItem.title} - {catchItem.quantity}kg - {catchItem.location}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block font-semibold">Siku za Kuhifadhi</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="30"
+                  value={coolBoxData.days}
+                  onChange={(e) => setCoolBoxData({ ...coolBoxData, days: e.target.value })}
+                  className="w-full rounded-xl border border-gray-200 p-4 focus:ring-2 focus:ring-ocean-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block font-semibold">Chagua Location ya CoolBox</label>
+                <select
+                  value={coolBoxData.location}
+                  onChange={(e) => setCoolBoxData({ ...coolBoxData, location: e.target.value })}
+                  className="w-full rounded-xl border border-gray-200 p-4 focus:ring-2 focus:ring-ocean-500"
+                  required
+                >
+                  {COOLBOX_LOCATIONS.map((location) => (
+                    <option key={location} value={location}>
+                      {location}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex space-x-4 pt-4">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 rounded-xl bg-gradient-to-r from-yellow-500 to-orange-600 px-6 py-4 font-bold text-white shadow-xl transition-all hover:shadow-2xl disabled:opacity-50"
+                >
+                  {loading ? 'Inatuma...' : 'Tuma Ombi'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCoolBoxForm(false)}
                   className="flex-1 rounded-xl bg-gray-200 px-6 py-4 font-semibold text-gray-800 transition-all hover:bg-gray-300"
                 >
                   Ghairi

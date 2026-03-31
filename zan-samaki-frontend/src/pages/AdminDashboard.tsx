@@ -61,6 +61,18 @@ interface SolarCoolBoxRecord {
   assigned_staff_id: number | null
 }
 
+interface CoolBoxRequestRecord {
+  id: number
+  location: string
+  start_date: string
+  days: number
+  price: string
+  status: 'requested' | 'approved' | 'rejected'
+  user: AdminUser
+  catch: FishCatchRecord | null
+  active_catch: FishCatchRecord | null
+}
+
 const sections: Array<{ id: AdminSection; label: string; icon: typeof Shield }> = [
   { id: 'overview', label: 'Overview', icon: Shield },
   { id: 'catches', label: 'Catch Approval', icon: Fish },
@@ -128,6 +140,7 @@ const AdminDashboard = ({ isSidebarOpen, onCloseSidebar, initialSection = 'overv
   const [catches, setCatches] = useState<FishCatchRecord[]>([])
   const [orders, setOrders] = useState<OrderRecord[]>([])
   const [coolboxes, setCoolboxes] = useState<SolarCoolBoxRecord[]>([])
+  const [coolboxRequests, setCoolboxRequests] = useState<CoolBoxRequestRecord[]>([])
   const [assignmentDrafts, setAssignmentDrafts] = useState<Record<number, string>>({})
   const [loading, setLoading] = useState(true)
   const [busyKey, setBusyKey] = useState<string | null>(null)
@@ -156,22 +169,25 @@ const AdminDashboard = ({ isSidebarOpen, onCloseSidebar, initialSection = 'overv
     setLoading(true)
 
     try {
-      const [usersData, catchesData, ordersData, coolboxesData] = await Promise.all([
+      const [usersData, catchesData, ordersData, coolboxesData, coolboxRequestsData] = await Promise.all([
         request('/api/users/'),
         request('/api/catches/'),
         request('/api/orders/'),
-        request('/api/solar-coolboxes/')
+        request('/api/solar-coolboxes/'),
+        request('/api/coolbox/')
       ])
 
       const nextUsers = Array.isArray(usersData) ? usersData : []
       const nextCatches = Array.isArray(catchesData) ? catchesData : []
       const nextOrders = Array.isArray(ordersData) ? ordersData : []
       const nextCoolboxes = Array.isArray(coolboxesData) ? coolboxesData : []
+      const nextCoolboxRequests = Array.isArray(coolboxRequestsData) ? coolboxRequestsData : []
 
       setUsers(nextUsers)
       setCatches(nextCatches)
       setOrders(nextOrders)
       setCoolboxes(nextCoolboxes)
+      setCoolboxRequests(nextCoolboxRequests)
       setAssignmentDrafts(
         nextCoolboxes.reduce<Record<number, string>>((drafts, item) => {
           drafts[item.id] = item.assigned_staff_id ? String(item.assigned_staff_id) : ''
@@ -184,7 +200,7 @@ const AdminDashboard = ({ isSidebarOpen, onCloseSidebar, initialSection = 'overv
       setLoading(false)
     }
   }
-
+  
   useEffect(() => {
     void loadAdminData()
   }, [])
@@ -198,10 +214,11 @@ const AdminDashboard = ({ isSidebarOpen, onCloseSidebar, initialSection = 'overv
     const fisherCount = users.filter((item) => item.role === 'fisher').length
     const staffCount = users.filter((item) => item.role === 'staff').length
     const brokenCoolboxes = coolboxes.filter((item) => item.condition_status === 'broken').length
+    const pendingCoolboxRequests = coolboxRequests.filter((item) => item.status === 'requested').length
     const orderRevenue = orders.reduce((sum, item) => sum + Number(item.total_price || 0), 0)
 
-    return { pendingCatches, fisherCount, staffCount, brokenCoolboxes, orderRevenue }
-  }, [catches, coolboxes, orders, users])
+    return { pendingCatches, fisherCount, staffCount, brokenCoolboxes, pendingCoolboxRequests, orderRevenue }
+  }, [catches, coolboxRequests, coolboxes, orders, users])
 
   const runAction = async (key: string, action: () => Promise<void>, successMessage: string) => {
     setBusyKey(key)
@@ -247,6 +264,13 @@ const AdminDashboard = ({ isSidebarOpen, onCloseSidebar, initialSection = 'overv
     })
   }
 
+  const updateCoolBoxRequest = async (item: CoolBoxRequestRecord, patch: Partial<Pick<CoolBoxRequestRecord, 'status'>>) => {
+    await request(`/api/coolbox/${item.id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch)
+    })
+  }
+
   const renderOverview = () => (
     <div className="space-y-8">
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
@@ -254,7 +278,7 @@ const AdminDashboard = ({ isSidebarOpen, onCloseSidebar, initialSection = 'overv
         <StatCard label="Fishers" value={stats.fisherCount} tone="sky" icon={Users} />
         <StatCard label="Staff" value={stats.staffCount} tone="emerald" icon={User} />
         <StatCard label="Broken CoolBoxes" value={stats.brokenCoolboxes} tone="rose" icon={Snowflake} />
-        <StatCard label="Order Revenue" value={formatCurrency(stats.orderRevenue)} tone="slate" icon={Shield} />
+        <StatCard label="Pending CoolBox Requests" value={stats.pendingCoolboxRequests} tone="slate" icon={Shield} />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
@@ -291,22 +315,33 @@ const AdminDashboard = ({ isSidebarOpen, onCloseSidebar, initialSection = 'overv
 
         <Panel title="Solar CoolBox Status">
           <div className="space-y-3">
-            {coolboxes.map((item) => (
+            {coolboxRequests.filter((item) => item.status === 'requested').slice(0, 5).map((item) => (
               <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="font-semibold text-slate-900">{item.location}</p>
+                    <p className="font-semibold text-slate-900">{item.user.username} requested {item.location}</p>
                     <p className="text-sm text-slate-600">
-                      Staff: {item.assigned_staff?.username || 'Unassigned'}
+                      Fish: {item.active_catch?.title || item.catch?.title || 'No active fish'} • {item.days} day(s)
                     </p>
-                    <p className="text-sm text-slate-500">Updated {formatDateTime(item.updated_at)}</p>
+                    <p className="text-sm text-slate-500">Start {formatDate(item.start_date)}</p>
                   </div>
-                  <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusClass(item.condition_status)}`}>
-                    {conditionLabel[item.condition_status]}
-                  </span>
+                  <button
+                    onClick={() =>
+                      void runAction(
+                        `coolbox-request-approve-${item.id}`,
+                        () => updateCoolBoxRequest(item, { status: 'approved' }),
+                        'CoolBox request approved'
+                      )
+                    }
+                    disabled={busyKey === `coolbox-request-approve-${item.id}`}
+                    className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                  >
+                    {busyKey === `coolbox-request-approve-${item.id}` ? 'Saving...' : 'Approve'}
+                  </button>
                 </div>
               </div>
             ))}
+            {!coolboxRequests.some((item) => item.status === 'requested') && <EmptyState text="No pending coolbox requests right now." />}
           </div>
         </Panel>
       </div>
@@ -467,7 +502,61 @@ const AdminDashboard = ({ isSidebarOpen, onCloseSidebar, initialSection = 'overv
 
   const renderCoolBox = () => (
     <Panel title="Solar CoolBox Management">
-      <div className="space-y-4">
+      <div className="space-y-6">
+        <div className="space-y-4">
+          <h4 className="text-lg font-semibold text-slate-900">Fisher Requests</h4>
+          {coolboxRequests.map((item) => (
+            <div key={item.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-lg font-bold text-slate-900">{item.user.username}</h3>
+                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClass(item.status)}`}>
+                      {item.status}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Location: {item.location} • Fish: {item.active_catch?.title || item.catch?.title || 'No active fish'}
+                  </p>
+                  <p className="text-sm text-slate-500">
+                    {item.days} day(s) • {formatCurrency(item.price)} • Start {formatDate(item.start_date)}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    onClick={() =>
+                      void runAction(
+                        `coolbox-request-approve-${item.id}`,
+                        () => updateCoolBoxRequest(item, { status: 'approved' }),
+                        'CoolBox request approved'
+                      )
+                    }
+                    disabled={busyKey === `coolbox-request-approve-${item.id}` || item.status === 'approved'}
+                    className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() =>
+                      void runAction(
+                        `coolbox-request-reject-${item.id}`,
+                        () => updateCoolBoxRequest(item, { status: 'rejected' }),
+                        'CoolBox request rejected'
+                      )
+                    }
+                    disabled={busyKey === `coolbox-request-reject-${item.id}` || item.status === 'rejected'}
+                    className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 disabled:opacity-50"
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+          {coolboxRequests.length === 0 && <EmptyState text="No coolbox requests found." />}
+        </div>
+
+        <div className="space-y-4">
         {coolboxes.map((item) => (
           <div key={item.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="grid gap-5 xl:grid-cols-[1.2fr_1fr]">
@@ -555,6 +644,7 @@ const AdminDashboard = ({ isSidebarOpen, onCloseSidebar, initialSection = 'overv
             </div>
           </div>
         ))}
+        </div>
       </div>
     </Panel>
   )

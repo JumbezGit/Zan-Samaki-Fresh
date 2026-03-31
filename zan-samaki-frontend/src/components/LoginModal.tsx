@@ -30,6 +30,37 @@ interface AuthFormValues {
   otp?: string
 }
 
+const getErrorMessage = (payload: unknown) => {
+  if (!payload || typeof payload !== 'object') {
+    return ''
+  }
+
+  const record = payload as Record<string, unknown>
+
+  if (typeof record.detail === 'string' && record.detail.trim()) {
+    return record.detail
+  }
+
+  if (typeof record.message === 'string' && record.message.trim()) {
+    return record.message
+  }
+
+  for (const value of Object.values(record)) {
+    if (Array.isArray(value) && value.length > 0) {
+      const first = value[0]
+      if (typeof first === 'string' && first.trim()) {
+        return first
+      }
+    }
+
+    if (typeof value === 'string' && value.trim()) {
+      return value
+    }
+  }
+
+  return ''
+}
+
 const LoginModal = ({
   isOpen,
   onClose,
@@ -44,14 +75,9 @@ const LoginModal = ({
   const [pendingOtpEmail, setPendingOtpEmail] = useState('')
   const { register, handleSubmit, formState: { errors }, reset } = useForm<AuthFormValues>()
   const activeRole = isLogin ? initialRole : role
-<<<<<<< HEAD
-  const authTitle = `${roleLabels[activeRole]}-${isLogin ? 'Ingia' : 'Jisajili'}`
-  const allowRegistration = initialRole !== 'admin' && initialRole !== 'staff'
-=======
   const isOtpStep = !isLogin && Boolean(pendingOtpEmail)
   const authTitle = `${roleLabels[activeRole]}-${isLogin ? 'Ingia' : isOtpStep ? 'Thibitisha OTP' : 'Jisajili'}`
-  const allowRegistration = initialRole !== 'admin'
->>>>>>> 9a14392bee5926f31bbf7215139db6d258069bf5
+  const allowRegistration = initialRole !== 'admin' && initialRole !== 'staff'
 
   useEffect(() => {
     if (!isOpen) {
@@ -103,7 +129,7 @@ const LoginModal = ({
           onClose()
         }
       } else {
-        toast.error(responseData.detail || responseData.message || 'Kosa! Jaribu tena.')
+        toast.error(getErrorMessage(responseData) || 'Kosa! Jaribu tena.')
       }
     } catch (err) {
       toast.error('Tatizo la mtandao. Jaribu tena.')
@@ -131,7 +157,7 @@ const LoginModal = ({
       if (res.ok) {
         toast.success(responseData.detail || 'OTP mpya imetumwa.')
       } else {
-        toast.error(responseData.detail || 'Imeshindikana kutuma OTP tena.')
+        toast.error(getErrorMessage(responseData) || 'Imeshindikana kutuma OTP tena.')
       }
     } catch (err) {
       toast.error('Tatizo la mtandao. Jaribu tena.')

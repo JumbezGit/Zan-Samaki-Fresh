@@ -112,9 +112,73 @@ class CreateAuctionSerializer(serializers.ModelSerializer):
         fields = ['catch', 'initial_price', 'increment_gap']
 
 class CoolBoxRentalSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    catch = FishCatchSerializer(read_only=True)
+    catch_id = serializers.PrimaryKeyRelatedField(
+        source='catch',
+        queryset=FishCatch.objects.all(),
+        write_only=True,
+        required=False,
+    )
+    active_catch = serializers.SerializerMethodField()
+
     class Meta:
         model = CoolBoxRental
-        fields = '__all__'
+        fields = (
+            'id',
+            'user',
+            'catch',
+            'catch_id',
+            'active_catch',
+            'location',
+            'start_date',
+            'days',
+            'price',
+            'status',
+        )
+
+    def validate(self, attrs):
+        request = self.context.get('request')
+        catch = attrs.get('catch') or getattr(self.instance, 'catch', None)
+
+        if request is None:
+            raise serializers.ValidationError('Ombi hili halikukamilika. Jaribu tena.')
+
+        if request.user.role in {'admin', 'staff'}:
+            status_value = attrs.get('status')
+            if status_value and status_value not in {'approved', 'rejected'}:
+                raise serializers.ValidationError('Admin au staff anaweza kuweka approve au reject tu.')
+            return attrs
+
+        if request.user.role != 'fisher':
+            raise serializers.ValidationError('Mvuvi pekee ndiye anaweza kuomba coolbox.')
+
+        if catch is None:
+            raise serializers.ValidationError('Chagua samaki wa kuhifadhi kwanza.')
+
+        if catch.user_id != request.user.id:
+            raise serializers.ValidationError('Unaweza kuomba coolbox kwa samaki wako tu.')
+
+        if not catch.is_approved:
+            raise serializers.ValidationError('Samaki lazima waidhinishwe kabla ya kuwekewa coolbox.')
+
+        if catch.status != 'available' or catch.quantity <= 0:
+            raise serializers.ValidationError('Samaki hawa hawapo tayari kuhifadhiwa kwenye coolbox.')
+
+        location = attrs.get('location')
+        valid_locations = {choice[0] for choice in CoolBoxRental.LOCATION_CHOICES}
+        if location not in valid_locations:
+            raise serializers.ValidationError('Chagua eneo sahihi la coolbox.')
+
+        return attrs
+
+    def get_active_catch(self, obj):
+        catch = obj.catch
+
+        if not catch or not catch.is_approved or catch.status != 'available' or catch.quantity <= 0:
+            return None
+
+        return FishCatchSerializer(catch, context=self.context).data
 
 
 class SolarCoolBoxSerializer(serializers.ModelSerializer):

@@ -496,14 +496,49 @@ class CoolBoxRentalViewSet(viewsets.ModelViewSet):
     queryset = CoolBoxRental.objects.all()
     serializer_class = CoolBoxRentalSerializer
     permission_classes = [IsAuthenticated]
+    http_method_names = ['get', 'post', 'patch', 'head', 'options']
 
     def get_queryset(self):
         if self.request.user.role == 'admin':
-            return CoolBoxRental.objects.select_related('user').order_by('-start_date')
-        return CoolBoxRental.objects.filter(user=self.request.user)
+            return CoolBoxRental.objects.select_related('user', 'catch').order_by('-start_date', '-id')
+        if self.request.user.role == 'staff':
+            assigned_locations = SolarCoolBox.objects.filter(
+                assigned_staff=self.request.user
+            ).values_list('location', flat=True)
+            return CoolBoxRental.objects.select_related('user', 'catch').filter(location__in=assigned_locations).order_by('-start_date', '-id')
+        return CoolBoxRental.objects.select_related('user', 'catch').filter(user=self.request.user).order_by('-start_date', '-id')
 
     def perform_create(self, serializer):
+        if self.request.user.role != 'fisher':
+            raise permissions.PermissionDenied('Mvuvi pekee ndiye anaweza kuomba coolbox.')
         serializer.save(user=self.request.user)
+
+    def partial_update(self, request, *args, **kwargs):
+        coolbox_request = self.get_object()
+
+        if request.user.role == 'admin':
+            serializer = self.get_serializer(coolbox_request, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
+
+        if request.user.role != 'staff':
+            return Response({'detail': 'Huna ruhusa ya kusimamia ombi hili.'}, status=status.HTTP_403_FORBIDDEN)
+
+        if not SolarCoolBox.objects.filter(location=coolbox_request.location, assigned_staff=request.user).exists():
+            return Response({'detail': 'Huna ruhusa kwa location hii ya coolbox.'}, status=status.HTTP_403_FORBIDDEN)
+
+        allowed_fields = {'status'}
+        if any(field not in allowed_fields for field in request.data.keys()):
+            return Response(
+                {'detail': 'Staff anaweza kuapprove au kureject ombi tu.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = self.get_serializer(coolbox_request, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
 
 class SolarCoolBoxViewSet(viewsets.ModelViewSet):
