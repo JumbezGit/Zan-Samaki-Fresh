@@ -5,9 +5,10 @@ import { ChevronDown, LogOut, Settings, User } from 'lucide-react'
 interface UserMenuProps {
   username: string
   onLogout: () => void
+  compact?: boolean
 }
 
-const UserMenu = ({ username, onLogout }: UserMenuProps) => {
+const UserMenu = ({ username, onLogout, compact = false }: UserMenuProps) => {
   const [isOpen, setIsOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -38,7 +39,7 @@ const UserMenu = ({ username, onLogout }: UserMenuProps) => {
       <button
         type="button"
         onClick={() => setIsOpen((current) => !current)}
-        className="flex items-center space-x-3 rounded-xl px-2 py-2 transition-all hover:bg-ocean-50"
+        className={`flex items-center rounded-xl px-2 py-2 transition-all hover:bg-ocean-50 ${compact ? 'space-x-0' : 'space-x-3'}`}
         aria-haspopup="menu"
         aria-expanded={isOpen}
         aria-label="Open user menu"
@@ -46,8 +47,8 @@ const UserMenu = ({ username, onLogout }: UserMenuProps) => {
         <div className="flex h-9 w-9 items-center justify-center rounded-full bg-ocean-600">
           <User className="h-4 w-4 text-white" />
         </div>
-        <span className="font-medium text-gray-700">{username}</span>
-        <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        {!compact && <span className="font-medium text-gray-700">{username}</span>}
+        <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${compact ? 'ml-1' : ''} ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (

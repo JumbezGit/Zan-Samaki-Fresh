@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Fish, Menu } from 'lucide-react'
+import { Fish } from 'lucide-react'
 import BrandLogo from '@/components/BrandLogo'
 import UserMenu from '@/components/UserMenu'
 
@@ -26,9 +26,9 @@ const FisherNavbar = ({ username, onLogout }: FisherNavbarProps) => {
             <UserMenu username={username} onLogout={onLogout} />
           </div>
 
-          <button className="md:hidden p-2" aria-label="Open menu">
-            <Menu className="w-6 h-6" />
-          </button>
+          <div className="md:hidden">
+            <UserMenu username={username} onLogout={onLogout} compact />
+          </div>
         </div>
       </div>
     </nav>

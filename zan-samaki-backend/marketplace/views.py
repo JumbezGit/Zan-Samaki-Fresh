@@ -6,12 +6,9 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import authenticate
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from django.core.mail import send_mail
-from django.conf import settings
 from decimal import Decimal, InvalidOperation
 from django.utils import timezone
 from datetime import timedelta
-from random import randint
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from .models import FishCatch, Order, CoolBoxRental, Auction, AuctionBid, SolarCoolBox
@@ -35,31 +32,6 @@ def _issue_auth_token(user):
         return str(RefreshToken.for_user(user).access_token)
     except ModuleNotFoundError:
         return f'dev-token-{user.id}'
-
-
-def _generate_otp():
-    return f'{randint(0, 999999):06d}'
-
-
-def _set_and_send_otp(user):
-    otp_code = _generate_otp()
-    user.otp_code = otp_code
-    user.otp_expires_at = timezone.now() + timedelta(minutes=10)
-    user.save(update_fields=['otp_code', 'otp_expires_at'])
-
-    send_mail(
-        subject='OTP ya kuthibitisha akaunti yako ya ZanSamaki',
-        message=(
-            f'Habari {user.username},\n\n'
-            f'OTP yako ya kuthibitisha akaunti ni: {otp_code}\n'
-            'Code hii itaisha baada ya dakika 10.\n\n'
-            'Asante,\n'
-            'ZanSamaki Fresh'
-        ),
-        from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@zansamaki.local'),
-        recipient_list=[user.email],
-        fail_silently=False,
-    )
 
 
 def _broadcast_auction_snapshot():
@@ -162,70 +134,14 @@ class RegisterView(APIView):
         serializer = UserCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        _set_and_send_otp(user)
         return Response(
             {
-                'detail': 'OTP imetumwa kwenye barua pepe yako. Thibitisha akaunti ili kuendelea.',
-                'email': user.email,
+                'detail': 'Akaunti imetengenezwa kwa mafanikio.',
+                'auth_token': _issue_auth_token(user),
+                'user': UserSerializer(user).data,
             },
             status=status.HTTP_201_CREATED,
         )
-
-
-class VerifyOtpView(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        email = str(request.data.get('email', '')).strip().lower()
-        otp = str(request.data.get('otp', '')).strip()
-
-        if not email or not otp:
-            return Response(
-                {'detail': 'Barua pepe na OTP vinahitajika.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        user = User.objects.filter(email__iexact=email).first()
-        if not user:
-            return Response({'detail': 'Akaunti haijapatikana.'}, status=status.HTTP_404_NOT_FOUND)
-
-        if user.is_verified:
-            token = _issue_auth_token(user)
-            return Response({'auth_token': token, 'user': UserSerializer(user).data})
-
-        if not user.otp_code or user.otp_code != otp:
-            return Response({'detail': 'OTP si sahihi.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        if not user.otp_expires_at or user.otp_expires_at < timezone.now():
-            return Response({'detail': 'OTP imeisha muda wake. Omba nyingine.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        user.is_verified = True
-        user.is_active = True
-        user.otp_code = ''
-        user.otp_expires_at = None
-        user.save(update_fields=['is_verified', 'is_active', 'otp_code', 'otp_expires_at'])
-
-        token = _issue_auth_token(user)
-        return Response({'auth_token': token, 'user': UserSerializer(user).data})
-
-
-class ResendOtpView(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        email = str(request.data.get('email', '')).strip().lower()
-        if not email:
-            return Response({'detail': 'Barua pepe inahitajika.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        user = User.objects.filter(email__iexact=email).first()
-        if not user:
-            return Response({'detail': 'Akaunti haijapatikana.'}, status=status.HTTP_404_NOT_FOUND)
-
-        if user.is_verified:
-            return Response({'detail': 'Akaunti hii tayari imethibitishwa.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        _set_and_send_otp(user)
-        return Response({'detail': 'OTP mpya imetumwa kwenye barua pepe yako.'})
 
 
 class LoginView(APIView):
@@ -240,16 +156,9 @@ class LoginView(APIView):
             user = User.objects.filter(email=email).first()
             username = user.username if user else None
 
-        matched_user = User.objects.filter(username=username).first() if username else None
-        if matched_user and (not matched_user.is_active or not matched_user.is_verified):
-            return Response(
-                {'detail': 'Thibitisha akaunti yako kwa OTP kwanza.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
         user = authenticate(request=request, username=username, password=password)
         if not user:
-            return Response({'detail': 'Invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': 'Umekosea nywila au baruapepe'}, status=status.HTTP_400_BAD_REQUEST)
 
         token = _issue_auth_token(user)
         return Response({'auth_token': token, 'user': UserSerializer(user).data})

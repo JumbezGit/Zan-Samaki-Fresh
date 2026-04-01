@@ -192,7 +192,7 @@ const App = () => {
           path="/admin"
           element={
             role === 'admin'
-              ? <Layout><AdminDashboard isSidebarOpen={adminSidebarOpen} onCloseSidebar={() => setAdminSidebarOpen(false)} initialSection="overview" /></Layout>
+              ? <Layout footerOffsetClassName="lg:pl-[304px]"><AdminDashboard isSidebarOpen={adminSidebarOpen} onCloseSidebar={() => setAdminSidebarOpen(false)} initialSection="overview" /></Layout>
               : <Navigate to={user && role ? getDashboardPath(role) : '/'} replace />
           }
         />
@@ -202,7 +202,7 @@ const App = () => {
             user
               ? (
                 role === 'admin'
-                  ? <Layout><AdminDashboard isSidebarOpen={adminSidebarOpen} onCloseSidebar={() => setAdminSidebarOpen(false)} initialSection="settings" /></Layout>
+                  ? <Layout footerOffsetClassName="lg:pl-[304px]"><AdminDashboard isSidebarOpen={adminSidebarOpen} onCloseSidebar={() => setAdminSidebarOpen(false)} initialSection="settings" /></Layout>
                   : <Layout><SettingsPage username={user.username} role={role} /></Layout>
               )
               : <Navigate to="/" replace />
@@ -226,34 +226,22 @@ const HomePage = ({
 }: {
   onRoleAction: (role: UserRole) => void
 }) => (
-  <div className="max-w-7xl mx-auto px-4 py-20">
-    <div className="text-center mb-20">
+  <div className="max-w-7xl mx-auto px-4 py-5">
+    <div className="text-center mb-10">
       <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-ocean-600 to-blue-600 bg-clip-text text-transparent mb-6">
         ZanSamaki Fresh
       </h1>
-      <p className="text-xl md:text-2xl text-gray-700 mb-8 max-w-2xl mx-auto">
-        Samaki safi moja kwa moja kutoka kwa wavuvi wa Zanzibar.
+      <p className="text-lg md:text-2xl text-gray-700 mb-8 max-w-2xl mx-auto">
+        ZanSamaki Fresh ni suluhisho lako Nunua Samaki moja kwa moja kutoka kwa wavuvi wa Zanzibar.
         Punguza upotevu wa mazao kwa sanduku la baridi la solar!
       </p>
     
     </div>
 
-    <div id="login-sections" className="grid gap-8 mt-20 scroll-mt-24 md:grid-cols-2 xl:grid-cols-4">
-      <div className="bg-white/70 backdrop-blur-sm p-8 rounded-2xl shadow-xl border border-white/50">
-        <Fish className="w-12 h-12 text-ocean-600 mx-auto mb-4" />
-        <h3 className="text-2xl font-bold mb-4 text-center">Mvuvi</h3>
-        <p className="text-gray-600 mb-6 text-center">Pakia uvuvi wako na upate bei bora haraka!</p>
-        <button
-          onClick={() => onRoleAction('fisher')}
-          className="w-full bg-ocean-600 text-white py-3 rounded-xl font-semibold hover:bg-ocean-700"
-        >
-          Kuwa Mvuvi
-        </button>
-      </div>
-      <div className="bg-white/70 backdrop-blur-sm p-8 rounded-2xl shadow-xl border border-white/50">
+    <div id="login-sections" className="mt-5 grid gap-6 scroll-mt-24 md:grid-cols-4">
+       <div className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-xl backdrop-blur-sm">
         <ShoppingCart className="w-12 h-12 text-ocean-600 mx-auto mb-4" />
         <h3 className="text-2xl font-bold mb-4 text-center">Nunua</h3>
-        <p className="text-gray-600 mb-6 text-center">Pata samaki safi na ubadilishe haraka!</p>
         <button
           onClick={() => onRoleAction('buyer')}
           className="w-full bg-ocean-600 text-white py-3 rounded-xl font-semibold hover:bg-ocean-700"
@@ -261,26 +249,37 @@ const HomePage = ({
           Nunua Sasa
         </button>
       </div>
-      <div className="bg-white/70 backdrop-blur-sm p-8 rounded-2xl shadow-xl border border-white/50">
-        <Shield className="w-12 h-12 text-ocean-600 mx-auto mb-4" />
-        <h3 className="text-2xl font-bold mb-4 text-center">Admin</h3>
-        <p className="text-gray-600 mb-6 text-center">Dhibiti uvuvi, staff, na solar coolbox zote.</p>
+
+      <div className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-xl backdrop-blur-sm">
+        <Fish className="w-12 h-12 text-ocean-600 mx-auto mb-4" />
+        <h3 className="text-2xl font-bold mb-4 text-center">Mvuvi</h3>
         <button
-          onClick={() => onRoleAction('admin')}
+          onClick={() => onRoleAction('fisher')}
           className="w-full bg-ocean-600 text-white py-3 rounded-xl font-semibold hover:bg-ocean-700"
         >
-          Admin Panel
+          Kuwa Mvuvi
         </button>
       </div>
-      <div className="bg-white/70 backdrop-blur-sm p-8 rounded-2xl shadow-xl border border-white/50">
+     
+      
+      <div className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-xl backdrop-blur-sm">
         <Users className="w-12 h-12 text-ocean-600 mx-auto mb-4" />
         <h3 className="text-2xl font-bold mb-4 text-center">Staff</h3>
-        <p className="text-gray-600 mb-6 text-center">Toa taarifa ya hali ya coolbox kwa Malindi, Mkokotoni, Chwaka, na Paje.</p>
         <button
           onClick={() => onRoleAction('staff')}
           className="w-full bg-ocean-600 text-white py-3 rounded-xl font-semibold hover:bg-ocean-700"
         >
           Staff Login
+        </button>
+      </div>
+      <div className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-xl backdrop-blur-sm">
+        <Shield className="w-12 h-12 text-ocean-600 mx-auto mb-4" />
+        <h3 className="text-2xl font-bold mb-4 text-center">Admin</h3>
+        <button
+          onClick={() => onRoleAction('admin')}
+          className="w-full bg-ocean-600 text-white py-3 rounded-xl font-semibold hover:bg-ocean-700"
+        >
+          Admin Panel
         </button>
       </div>
     </div>

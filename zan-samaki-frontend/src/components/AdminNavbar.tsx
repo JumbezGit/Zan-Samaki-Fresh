@@ -27,9 +27,12 @@ const AdminNavbar = ({ username, onLogout, onOpenSidebar }: AdminNavbarProps) =>
             <UserMenu username={username} onLogout={onLogout} />
           </div>
 
-          <button onClick={onOpenSidebar} className="md:hidden p-2" aria-label="Open menu">
-            <Menu className="w-6 h-6" />
-          </button>
+          <div className="flex items-center gap-2 md:hidden">
+            <UserMenu username={username} onLogout={onLogout} compact />
+            <button onClick={onOpenSidebar} className="p-2" aria-label="Open menu">
+              <Menu className="w-6 h-6" />
+            </button>
+          </div>
         </div>
       </div>
     </nav>

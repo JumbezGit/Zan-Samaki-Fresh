@@ -21,14 +21,11 @@ const AuthPage = ({ setUser, setRole }: AuthPageProps) => {
     name: '',
     email: '',
     password: '',
-    otp: '',
     role: 'fisher' as 'fisher' | 'buyer'
   })
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  const [pendingOtpEmail, setPendingOtpEmail] = useState('')
   const navigate = useNavigate()
-  const isOtpStep = !isLogin && Boolean(pendingOtpEmail)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -37,19 +34,15 @@ const AuthPage = ({ setUser, setRole }: AuthPageProps) => {
     try {
       const endpoint = isLogin
         ? '/api/auth/jwt/login/'
-        : isOtpStep
-          ? '/api/auth/jwt/verify-otp/'
-          : '/api/auth/jwt/register/'
+        : '/api/auth/jwt/register/'
       const body = isLogin
         ? { email: formData.email, password: formData.password }
-        : isOtpStep
-          ? { email: pendingOtpEmail, otp: formData.otp }
-          : {
-            username: formData.name,
-            email: formData.email,
-            password: formData.password,
-            role: formData.role,
-          }
+        : {
+          username: formData.name,
+          email: formData.email,
+          password: formData.password,
+          role: formData.role,
+        }
 
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -60,52 +53,13 @@ const AuthPage = ({ setUser, setRole }: AuthPageProps) => {
       const data = await res.json()
 
       if (res.ok) {
-        if (!isLogin && !isOtpStep) {
-          setPendingOtpEmail(data.email || formData.email)
-          setFormData((current) => ({
-            ...current,
-            email: data.email || current.email,
-            otp: '',
-          }))
-          toast.success('OTP imetumwa. Ingiza code kuthibitisha akaunti.')
-          return
-        }
-
         localStorage.setItem('token', data.auth_token)
         setUser(data.user)
         setRole(data.user.role)
-        toast.success(isLogin ? 'Umeingia!' : 'Akaunti yako imethibitishwa!')
+        toast.success(isLogin ? 'Umeingia!' : 'Akaunti yako imetengenezwa!')
         navigate(getDashboardPath(data.user.role))
       } else {
         toast.error(data.detail || data.message || 'Hitilafu imetokea')
-      }
-    } catch (err) {
-      toast.error('Hitilafu ya mtandao')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleResendOtp = async () => {
-    if (!pendingOtpEmail) {
-      return
-    }
-
-    setLoading(true)
-
-    try {
-      const res = await fetch('/api/auth/jwt/resend-otp/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: pendingOtpEmail }),
-      })
-
-      const data = await res.json()
-
-      if (res.ok) {
-        toast.success(data.detail || 'OTP mpya imetumwa.')
-      } else {
-        toast.error(data.detail || 'Imeshindikana kutuma OTP tena.')
       }
     } catch (err) {
       toast.error('Hitilafu ya mtandao')
@@ -122,15 +76,15 @@ const AuthPage = ({ setUser, setRole }: AuthPageProps) => {
             {isLogin ? <Lock className="w-10 h-10 text-white" /> : <UserPlus className="w-10 h-10 text-white" />}
           </div>
           <h2 className="text-3xl font-bold bg-gradient-to-r from-ocean-600 to-blue-600 bg-clip-text text-transparent mb-2">
-            {isLogin ? 'Ingia' : isOtpStep ? 'Thibitisha OTP' : 'Jiunge'}
+            {isLogin ? 'Ingia' : 'Jiunge'}
           </h2>
           <p className="text-gray-600">
-            {isLogin ? 'Ingia ili uanze kutumia ZanSamaki' : isOtpStep ? 'Ingiza OTP tuliyotuma kwenye barua pepe yako' : 'Unda akaunti yako sasa'}
+            {isLogin ? 'Ingia ili uanze kutumia ZanSamaki' : 'Unda akaunti yako sasa'}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {!isLogin && !isOtpStep && (
+          {!isLogin && (
             <>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Jina</label>
@@ -151,65 +105,37 @@ const AuthPage = ({ setUser, setRole }: AuthPageProps) => {
             <label className="block text-sm font-medium text-gray-700 mb-2">Barua Pepe</label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              {isOtpStep ? (
-                <input
-                  type="email"
-                  value={pendingOtpEmail}
-                  disabled
-                  readOnly
-                  className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-600"
-                />
-              ) : (
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-ocean-500 focus:border-transparent bg-white/50"
-                  required
-                />
-              )}
-            </div>
-          </div>
-          {!isOtpStep && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Nenosiri</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  minLength={5}
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full pl-11 pr-11 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-ocean-500 focus:border-transparent bg-white/50"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((value) => !value)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-ocean-600"
-                  aria-label={showPassword ? 'Ficha nenosiri' : 'Onyesha nenosiri'}
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-            </div>
-          )}
-          {isOtpStep && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">OTP</label>
               <input
-                type="text"
-                inputMode="numeric"
-                minLength={6}
-                maxLength={6}
-                value={formData.otp}
-                onChange={(e) => setFormData({ ...formData, otp: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-center text-lg tracking-[0.4em] focus:ring-2 focus:ring-ocean-500 focus:border-transparent bg-white/50"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-ocean-500 focus:border-transparent bg-white/50"
                 required
               />
-              <p className="mt-2 text-sm text-gray-500">Tumeituma OTP kwenye {pendingOtpEmail}.</p>
             </div>
-          )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Nenosiri</label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type={showPassword ? 'text' : 'password'}
+                minLength={5}
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                className="w-full pl-11 pr-11 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-ocean-500 focus:border-transparent bg-white/50"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((value) => !value)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-ocean-600"
+                aria-label={showPassword ? 'Ficha nenosiri' : 'Onyesha nenosiri'}
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
+          </div>
           <button
             type="submit"
             disabled={loading}
@@ -221,26 +147,15 @@ const AuthPage = ({ setUser, setRole }: AuthPageProps) => {
                 <span>Inapakia...</span>
               </>
             ) : (
-              <>{isLogin ? 'Ingia' : isOtpStep ? 'Thibitisha OTP' : 'Jiunge'}</>
+              <>{isLogin ? 'Ingia' : 'Jiunge'}</>
             )}
           </button>
-          {isOtpStep && (
-            <button
-              type="button"
-              onClick={handleResendOtp}
-              disabled={loading}
-              className="w-full border border-ocean-200 text-ocean-700 py-3 px-6 rounded-xl font-semibold hover:bg-ocean-50 transition-all disabled:opacity-50"
-            >
-              Tuma OTP tena
-            </button>
-          )}
         </form>
 
         <div className="mt-8 text-center">
           <button
             type="button"
             onClick={() => {
-              setPendingOtpEmail('')
               setIsLogin(!isLogin)
             }}
             className="text-ocean-600 hover:text-ocean-700 font-semibold transition-colors"

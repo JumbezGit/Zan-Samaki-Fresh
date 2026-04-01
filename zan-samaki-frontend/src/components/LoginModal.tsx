@@ -27,7 +27,6 @@ interface AuthFormValues {
   username?: string
   email: string
   password: string
-  otp?: string
 }
 
 const getErrorMessage = (payload: unknown) => {
@@ -72,11 +71,9 @@ const LoginModal = ({
   const [role, setRole] = useState<RegistrationRole>(initialRole === 'admin' || initialRole === 'staff' ? 'buyer' : initialRole)
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  const [pendingOtpEmail, setPendingOtpEmail] = useState('')
   const { register, handleSubmit, formState: { errors }, reset } = useForm<AuthFormValues>()
   const activeRole = isLogin ? initialRole : role
-  const isOtpStep = !isLogin && Boolean(pendingOtpEmail)
-  const authTitle = `${roleLabels[activeRole]}-${isLogin ? 'Ingia' : isOtpStep ? 'Thibitisha OTP' : 'Jisajili'}`
+  const authTitle = `${roleLabels[activeRole]}-${isLogin ? 'Ingia' : 'Jisajili'}`
   const allowRegistration = initialRole !== 'admin' && initialRole !== 'staff'
 
   useEffect(() => {
@@ -87,7 +84,6 @@ const LoginModal = ({
     setIsLogin(initialRole === 'admin' || initialRole === 'staff' ? true : initialMode === 'login')
     setRole(initialRole === 'admin' || initialRole === 'staff' ? 'buyer' : initialRole)
     setShowPassword(false)
-    setPendingOtpEmail('')
     reset()
   }, [initialMode, initialRole, isOpen, reset])
 
@@ -95,12 +91,10 @@ const LoginModal = ({
     setLoading(true)
 
     try {
-      const endpoint = isLogin ? 'login' : isOtpStep ? 'verify-otp' : 'register'
+      const endpoint = isLogin ? 'login' : 'register'
       const body = isLogin
         ? { email: data.email, password: data.password }
-        : isOtpStep
-          ? { email: pendingOtpEmail, otp: data.otp }
-          : { ...data, role }
+        : { ...data, role }
       
       const res = await fetch(`/api/auth/jwt/${endpoint}/`, {
         method: 'POST',
@@ -111,53 +105,17 @@ const LoginModal = ({
       const responseData = await res.json()
 
       if (res.ok) {
-        if (!isLogin && !isOtpStep) {
-          setPendingOtpEmail(responseData.email || data.email)
-          reset({ email: responseData.email || data.email, otp: '' })
-          toast.success('OTP imetumwa. Ingiza code kuthibitisha akaunti.')
-          return
-        }
-
         const { auth_token } = responseData
         localStorage.setItem('token', auth_token)
         const accepted = await onSuccess(activeRole)
 
         if (accepted) {
-          toast.success(isLogin ? 'Karibu tena!' : 'Akaunti yako imethibitishwa!')
-          setPendingOtpEmail('')
+          toast.success(isLogin ? 'Karibu tena!' : 'Akaunti yako imetengenezwa!')
           reset()
           onClose()
         }
       } else {
         toast.error(getErrorMessage(responseData) || 'Kosa! Jaribu tena.')
-      }
-    } catch (err) {
-      toast.error('Tatizo la mtandao. Jaribu tena.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleResendOtp = async () => {
-    if (!pendingOtpEmail) {
-      return
-    }
-
-    setLoading(true)
-
-    try {
-      const res = await fetch('/api/auth/jwt/resend-otp/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: pendingOtpEmail }),
-      })
-
-      const responseData = await res.json()
-
-      if (res.ok) {
-        toast.success(responseData.detail || 'OTP mpya imetumwa.')
-      } else {
-        toast.error(getErrorMessage(responseData) || 'Imeshindikana kutuma OTP tena.')
       }
     } catch (err) {
       toast.error('Tatizo la mtandao. Jaribu tena.')
@@ -183,7 +141,7 @@ const LoginModal = ({
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {!isLogin && !isOtpStep && (
+          {!isLogin && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Jina la Mtumiaji
@@ -203,77 +161,46 @@ const LoginModal = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              {isOtpStep ? 'Barua Pepe' : 'Barua Pepe au Simu'}
+              Barua Pepe au Simu
             </label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              {isOtpStep ? (
-                <input
-                  disabled
-                  type="email"
-                  readOnly
-                  value={pendingOtpEmail}
-                  className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl bg-gray-50 text-gray-600"
-                />
-              ) : (
-                <input
-                  {...register('email', { required: 'Barua pepe ni lazima' })}
-                  disabled={loading}
-                  type="email"
-                  className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-ocean-500 focus:border-transparent transition-all"
-                  placeholder="example@email.com"
-                />
-              )}
+              <input
+                {...register('email', { required: 'Barua pepe ni lazima' })}
+                disabled={loading}
+                type="email"
+                className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-ocean-500 focus:border-transparent transition-all"
+                placeholder="example@email.com"
+              />
             </div>
             {errors.email && <p className="text-red-500 text-sm mt-1">{String(errors.email.message)}</p>}
           </div>
 
-          {!isOtpStep && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Nenosiri</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  {...register('password', { required: 'Nenosiri ni lazima', minLength: {
-                    value: 5,
-                    message: 'Nenosiri lazima liwe na herufi 5+'
-                  } })}
-                  disabled={loading}
-                  type={showPassword ? 'text' : 'password'}
-                  className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-ocean-500 focus:border-transparent transition-all"
-                  placeholder="Nenosiri lako"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((value) => !value)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-ocean-600"
-                  aria-label={showPassword ? 'Ficha nenosiri' : 'Onyesha nenosiri'}
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-              {errors.password && <p className="text-red-500 text-sm mt-1">{String(errors.password.message)}</p>}
-            </div>
-          )}
-
-          {isOtpStep && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">OTP</label>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Nenosiri</label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
-                {...register('otp', {
-                  required: 'OTP ni lazima',
-                  minLength: { value: 6, message: 'OTP lazima iwe tarakimu 6' },
-                  maxLength: { value: 6, message: 'OTP lazima iwe tarakimu 6' },
-                })}
+                {...register('password', { required: 'Nenosiri ni lazima', minLength: {
+                  value: 5,
+                  message: 'Nenosiri lazima liwe na herufi 5+'
+                } })}
                 disabled={loading}
-                inputMode="numeric"
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl tracking-[0.4em] text-center text-lg focus:ring-2 focus:ring-ocean-500 focus:border-transparent transition-all"
-                placeholder="000000"
+                type={showPassword ? 'text' : 'password'}
+                className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-ocean-500 focus:border-transparent transition-all"
+                placeholder="Nenosiri lako"
               />
-              {errors.otp && <p className="text-red-500 text-sm mt-1">{String(errors.otp.message)}</p>}
-              <p className="mt-2 text-sm text-gray-500">Tumeituma OTP kwenye {pendingOtpEmail}.</p>
+              <button
+                type="button"
+                onClick={() => setShowPassword((value) => !value)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-ocean-600"
+                aria-label={showPassword ? 'Ficha nenosiri' : 'Onyesha nenosiri'}
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
             </div>
-          )}
+            {errors.password && <p className="text-red-500 text-sm mt-1">{String(errors.password.message)}</p>}
+          </div>
 
           <button
             type="submit"
@@ -286,20 +213,9 @@ const LoginModal = ({
                 <span>Inapakia...</span>
               </>
             ) : (
-              <>{isLogin ? 'Ingia' : isOtpStep ? 'Thibitisha OTP' : 'Jisajili'}</>
+              <>{isLogin ? 'Ingia' : 'Jisajili'}</>
             )}
           </button>
-
-          {isOtpStep && (
-            <button
-              type="button"
-              onClick={handleResendOtp}
-              disabled={loading}
-              className="w-full border border-ocean-200 text-ocean-700 py-3 px-6 rounded-xl font-semibold hover:bg-ocean-50 transition-all disabled:opacity-50"
-            >
-              Tuma OTP tena
-            </button>
-          )}
         </form>
 
         <div className="mt-6 pt-6 border-t border-gray-200 text-center">
@@ -307,7 +223,6 @@ const LoginModal = ({
             <button
               type="button"
               onClick={() => {
-                setPendingOtpEmail('')
                 setIsLogin(!isLogin)
                 reset()
               }}

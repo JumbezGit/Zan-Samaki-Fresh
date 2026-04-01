@@ -149,9 +149,12 @@ const BuyerNavbar = ({ username, onLogout }: BuyerNavbarProps) => {
             <UserMenu username={username} onLogout={onLogout} />
           </div>
 
-          <button className="md:hidden p-2" aria-label="Open menu">
-            <Menu className="w-6 h-6" />
-          </button>
+          <div className="flex items-center gap-2 md:hidden">
+            <UserMenu username={username} onLogout={onLogout} compact />
+            <button className="p-2" aria-label="Open menu">
+              <Menu className="w-6 h-6" />
+            </button>
+          </div>
         </div>
       </div>
     </nav>

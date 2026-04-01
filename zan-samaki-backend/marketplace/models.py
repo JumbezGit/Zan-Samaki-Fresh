@@ -14,8 +14,6 @@ class User(AbstractUser):
     phone = models.CharField(max_length=15, blank=True)
     location = models.CharField(max_length=255, blank=True)
     is_verified = models.BooleanField(default=True)
-    otp_code = models.CharField(max_length=6, blank=True)
-    otp_expires_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return self.username
