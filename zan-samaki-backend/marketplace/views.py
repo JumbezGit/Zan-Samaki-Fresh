@@ -528,10 +528,10 @@ class CoolBoxRentalViewSet(viewsets.ModelViewSet):
         if not SolarCoolBox.objects.filter(location=coolbox_request.location, assigned_staff=request.user).exists():
             return Response({'detail': 'Huna ruhusa kwa location hii ya coolbox.'}, status=status.HTTP_403_FORBIDDEN)
 
-        allowed_fields = {'status'}
+        allowed_fields = {'status', 'quantity_kg', 'amount_per_day'}
         if any(field not in allowed_fields for field in request.data.keys()):
             return Response(
-                {'detail': 'Staff anaweza kuapprove au kureject ombi tu.'},
+                {'detail': 'Staff anaweza kusimamia status, kilo, na amount per day tu.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
 

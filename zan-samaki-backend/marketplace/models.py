@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from decimal import Decimal
 from django.utils import timezone
 
 class User(AbstractUser):
@@ -88,6 +89,8 @@ class CoolBoxRental(models.Model):
     location = models.CharField(max_length=20, choices=LOCATION_CHOICES, default='Malindi')
     start_date = models.DateField(default=timezone.now)
     days = models.IntegerField(default=1)
+    quantity_kg = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0'))
+    amount_per_day = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('3000'))
     price = models.DecimalField(max_digits=10, decimal_places=2, default=3000)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='requested')
 

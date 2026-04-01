@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Menu, Package, Radio, Search, ShoppingBasket, ShoppingCart } from 'lucide-react'
+import { Menu, Package, Radio, Search, ShoppingCart } from 'lucide-react'
 import BrandLogo from '@/components/BrandLogo'
 import UserMenu from '@/components/UserMenu'
 
@@ -137,13 +137,6 @@ const BuyerNavbar = ({ username, onLogout }: BuyerNavbarProps) => {
               <Package className="w-5 h-5" />
               <span>Order</span>
               {renderBubble(orderCount)}
-            </NavLink>
-            <NavLink
-              to="/buyer/cart"
-              className={navLinkClass}
-            >
-              <ShoppingBasket className="w-5 h-5" />
-              <span>Cart</span>
             </NavLink>
             <NavLink
               to="/buyer/live"

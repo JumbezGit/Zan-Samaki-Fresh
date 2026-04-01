@@ -17,6 +17,7 @@ interface CoolBoxRequest {
   id: number
   start_date: string
   days: number
+  quantity_kg: string
   price: string
   status: string
   location: string
@@ -64,6 +65,7 @@ const FisherDashboard = () => {
   const [coolBoxData, setCoolBoxData] = useState({
     catch_id: '',
     days: '1',
+    quantity_kg: '',
     location: 'Malindi'
   })
   const [earnings, setEarnings] = useState(0)
@@ -229,6 +231,7 @@ const FisherDashboard = () => {
     setCoolBoxData({
       catch_id: String(eligibleCatches[0].id),
       days: '1',
+      quantity_kg: String(eligibleCatches[0].quantity),
       location: 'Malindi'
     })
     setShowCoolBoxForm(true)
@@ -248,6 +251,7 @@ const FisherDashboard = () => {
         },
         body: JSON.stringify({
           days: Number(coolBoxData.days),
+          quantity_kg: Number(coolBoxData.quantity_kg),
           catch_id: Number(coolBoxData.catch_id),
           location: coolBoxData.location
         })
@@ -259,6 +263,7 @@ const FisherDashboard = () => {
         setCoolBoxData({
           catch_id: '',
           days: '1',
+          quantity_kg: '',
           location: 'Malindi'
         })
         void fetchCoolBoxRequests()
@@ -365,6 +370,7 @@ const FisherDashboard = () => {
                   <div className="space-y-2 text-sm text-gray-600">
                     <p>Aina ya samaki: <span className="font-semibold">{activeCatch.fish_type}</span></p>
                     <p>Coolbox location: <span className="font-semibold">{request.location}</span></p>
+                    <p>Kilo saved in coolbox: <span className="font-semibold">{request.quantity_kg} kg</span></p>
                     <p>Kilo zilizopo: <span className="font-semibold">{activeCatch.quantity} kg</span></p>
                     <p>Muda wa coolbox: <span className="font-semibold">{request.days} siku</span></p>
                     <p>Gharama: <span className="font-semibold">TZS {Number(request.price).toLocaleString()}</span></p>
@@ -652,7 +658,14 @@ const FisherDashboard = () => {
                 <label className="mb-2 block font-semibold">Chagua Samaki wa Kuhifadhi</label>
                 <select
                   value={coolBoxData.catch_id}
-                  onChange={(e) => setCoolBoxData({ ...coolBoxData, catch_id: e.target.value })}
+                  onChange={(e) => {
+                    const selectedCatch = eligibleCatches.find((catchItem) => String(catchItem.id) === e.target.value)
+                    setCoolBoxData({
+                      ...coolBoxData,
+                      catch_id: e.target.value,
+                      quantity_kg: selectedCatch ? String(selectedCatch.quantity) : ''
+                    })
+                  }}
                   className="w-full rounded-xl border border-gray-200 p-4 focus:ring-2 focus:ring-ocean-500"
                   required
                 >
@@ -676,6 +689,28 @@ const FisherDashboard = () => {
                   className="w-full rounded-xl border border-gray-200 p-4 focus:ring-2 focus:ring-ocean-500"
                   required
                 />
+              </div>
+
+              <div>
+                <label className="mb-2 block font-semibold">Kilo za Kuhifadhi kwenye CoolBox</label>
+                <input
+                  type="number"
+                  min="0.1"
+                  step="0.1"
+                  max={
+                    eligibleCatches.find((catchItem) => String(catchItem.id) === coolBoxData.catch_id)?.quantity || undefined
+                  }
+                  value={coolBoxData.quantity_kg}
+                  onChange={(e) => setCoolBoxData({ ...coolBoxData, quantity_kg: e.target.value })}
+                  className="w-full rounded-xl border border-gray-200 p-4 focus:ring-2 focus:ring-ocean-500"
+                  required
+                />
+                {coolBoxData.catch_id && (
+                  <p className="mt-2 text-sm text-gray-500">
+                    Available kilos:{' '}
+                    {eligibleCatches.find((catchItem) => String(catchItem.id) === coolBoxData.catch_id)?.quantity ?? 0} kg
+                  </p>
+                )}
               </div>
 
               <div>

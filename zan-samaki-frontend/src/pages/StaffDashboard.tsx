@@ -17,6 +17,8 @@ interface CoolBoxRequestRecord {
   location: string
   start_date: string
   days: number
+  quantity_kg: string
+  amount_per_day: string
   price: string
   status: 'requested' | 'approved' | 'rejected'
   user: {
@@ -63,6 +65,7 @@ const StaffDashboard = () => {
   const [coolboxes, setCoolboxes] = useState<CoolBoxRecord[]>([])
   const [coolboxRequests, setCoolboxRequests] = useState<CoolBoxRequestRecord[]>([])
   const [draftNotes, setDraftNotes] = useState<Record<number, string>>({})
+  const [requestDrafts, setRequestDrafts] = useState<Record<number, { quantity_kg: string; amount_per_day: string }>>({})
   const [loading, setLoading] = useState(true)
   const [busyKey, setBusyKey] = useState<string | null>(null)
 
@@ -95,8 +98,18 @@ const StaffDashboard = () => {
       ])
       const nextCoolboxes = Array.isArray(coolboxesData) ? coolboxesData : []
       const nextCoolboxRequests = Array.isArray(coolboxRequestsData) ? coolboxRequestsData : []
+
       setCoolboxes(nextCoolboxes)
       setCoolboxRequests(nextCoolboxRequests)
+      setRequestDrafts(
+        nextCoolboxRequests.reduce<Record<number, { quantity_kg: string; amount_per_day: string }>>((drafts, item) => {
+          drafts[item.id] = {
+            quantity_kg: String(item.quantity_kg ?? ''),
+            amount_per_day: String(item.amount_per_day ?? '')
+          }
+          return drafts
+        }, {})
+      )
       setDraftNotes(
         nextCoolboxes.reduce<Record<number, string>>((notes, item) => {
           notes[item.id] = item.notes || ''
@@ -121,7 +134,10 @@ const StaffDashboard = () => {
     })
   }
 
-  const updateCoolBoxRequest = async (item: CoolBoxRequestRecord, patch: Partial<Pick<CoolBoxRequestRecord, 'status'>>) => {
+  const updateCoolBoxRequest = async (
+    item: CoolBoxRequestRecord,
+    patch: Partial<Pick<CoolBoxRequestRecord, 'status' | 'quantity_kg' | 'amount_per_day'>>
+  ) => {
     await request(`/api/coolbox/${item.id}/`, {
       method: 'PATCH',
       body: JSON.stringify(patch)
@@ -141,6 +157,37 @@ const StaffDashboard = () => {
       await loadCoolboxes()
     } catch (error) {
       toast.error('Failed to update coolbox condition')
+    } finally {
+      setBusyKey(null)
+    }
+  }
+
+  const saveRequestDetails = async (item: CoolBoxRequestRecord, status?: 'approved' | 'rejected') => {
+    const key = status ? `request-${status}-${item.id}` : `request-save-${item.id}`
+    setBusyKey(key)
+
+    try {
+      await updateCoolBoxRequest(item, {
+        quantity_kg: requestDrafts[item.id]?.quantity_kg || item.quantity_kg,
+        amount_per_day: requestDrafts[item.id]?.amount_per_day || item.amount_per_day,
+        ...(status ? { status } : {})
+      })
+      toast.success(
+        status === 'approved'
+          ? 'CoolBox request approved'
+          : status === 'rejected'
+            ? 'CoolBox request rejected'
+            : 'CoolBox kilos and daily amount updated'
+      )
+      await loadCoolboxes()
+    } catch (error) {
+      toast.error(
+        status === 'approved'
+          ? 'Failed to approve coolbox request'
+          : status === 'rejected'
+            ? 'Failed to reject coolbox request'
+            : 'Failed to update coolbox request details'
+      )
     } finally {
       setBusyKey(null)
     }
@@ -210,48 +257,70 @@ const StaffDashboard = () => {
                       Location: {item.location} • Fish: {item.active_catch?.title || item.catch?.title || 'No active fish'}
                     </p>
                     <p className="text-sm text-slate-500">
-                      {item.days} day(s) • TZS {Number(item.price).toLocaleString()} • Start {formatDateTime(item.start_date)}
+                      {item.days} day(s) • Total TZS {Number(item.price).toLocaleString()} • Start {formatDateTime(item.start_date)}
+                    </p>
+                    <p className="mt-2 text-sm text-slate-500">
+                      Active fish kg: {item.active_catch ? Number(item.active_catch.quantity).toLocaleString() : 'N/A'}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-3">
-                    <button
-                      onClick={() =>
-                        void (async () => {
-                          const key = `request-approve-${item.id}`
-                          setBusyKey(key)
-                          try {
-                            await updateCoolBoxRequest(item, { status: 'approved' })
-                            toast.success('CoolBox request approved')
-                            await loadCoolboxes()
-                          } catch (error) {
-                            toast.error('Failed to approve coolbox request')
-                          } finally {
-                            setBusyKey(null)
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="text-sm font-semibold text-slate-700">
+                        Kilo in coolbox
+                        <input
+                          type="number"
+                          min="0.1"
+                          step="0.1"
+                          value={requestDrafts[item.id]?.quantity_kg ?? ''}
+                          onChange={(event) =>
+                            setRequestDrafts((current) => ({
+                              ...current,
+                              [item.id]: {
+                                quantity_kg: event.target.value,
+                                amount_per_day: current[item.id]?.amount_per_day ?? String(item.amount_per_day)
+                              }
+                            }))
                           }
-                        })()
-                      }
-                      disabled={busyKey === `request-approve-${item.id}` || item.status === 'approved'}
+                          className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none"
+                        />
+                      </label>
+                      <label className="text-sm font-semibold text-slate-700">
+                        Amount per day
+                        <input
+                          type="number"
+                          min="0"
+                          step="100"
+                          value={requestDrafts[item.id]?.amount_per_day ?? ''}
+                          onChange={(event) =>
+                            setRequestDrafts((current) => ({
+                              ...current,
+                              [item.id]: {
+                                quantity_kg: current[item.id]?.quantity_kg ?? String(item.quantity_kg),
+                                amount_per_day: event.target.value
+                              }
+                            }))
+                          }
+                          className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none"
+                        />
+                      </label>
+                    </div>
+                    <button
+                      onClick={() => void saveRequestDetails(item)}
+                      disabled={busyKey === `request-save-${item.id}`}
+                      className="rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
+                    >
+                      Save Details
+                    </button>
+                    <button
+                      onClick={() => void saveRequestDetails(item, 'approved')}
+                      disabled={busyKey === `request-approved-${item.id}` || item.status === 'approved'}
                       className="rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
                     >
                       Approve
                     </button>
                     <button
-                      onClick={() =>
-                        void (async () => {
-                          const key = `request-reject-${item.id}`
-                          setBusyKey(key)
-                          try {
-                            await updateCoolBoxRequest(item, { status: 'rejected' })
-                            toast.success('CoolBox request rejected')
-                            await loadCoolboxes()
-                          } catch (error) {
-                            toast.error('Failed to reject coolbox request')
-                          } finally {
-                            setBusyKey(null)
-                          }
-                        })()
-                      }
-                      disabled={busyKey === `request-reject-${item.id}` || item.status === 'rejected'}
+                      onClick={() => void saveRequestDetails(item, 'rejected')}
+                      disabled={busyKey === `request-rejected-${item.id}` || item.status === 'rejected'}
                       className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 disabled:opacity-50"
                     >
                       Reject

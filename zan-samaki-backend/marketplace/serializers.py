@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from datetime import timedelta
+from decimal import Decimal
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from .models import FishCatch, Order, CoolBoxRental, Auction, AuctionBid, SolarCoolBox
@@ -133,6 +134,8 @@ class CoolBoxRentalSerializer(serializers.ModelSerializer):
             'location',
             'start_date',
             'days',
+            'quantity_kg',
+            'amount_per_day',
             'price',
             'status',
         )
@@ -148,6 +151,12 @@ class CoolBoxRentalSerializer(serializers.ModelSerializer):
             status_value = attrs.get('status')
             if status_value and status_value not in {'approved', 'rejected'}:
                 raise serializers.ValidationError('Admin au staff anaweza kuweka approve au reject tu.')
+            quantity_kg = attrs.get('quantity_kg')
+            if quantity_kg is not None and quantity_kg <= 0:
+                raise serializers.ValidationError('Kilo za kuhifadhi lazima ziwe zaidi ya sifuri.')
+            amount_per_day = attrs.get('amount_per_day')
+            if amount_per_day is not None and amount_per_day < 0:
+                raise serializers.ValidationError('Kiasi cha malipo kwa siku hakiwezi kuwa hasi.')
             return attrs
 
         if request.user.role != 'fisher':
@@ -165,12 +174,39 @@ class CoolBoxRentalSerializer(serializers.ModelSerializer):
         if catch.status != 'available' or catch.quantity <= 0:
             raise serializers.ValidationError('Samaki hawa hawapo tayari kuhifadhiwa kwenye coolbox.')
 
+        quantity_kg = attrs.get('quantity_kg')
+        if quantity_kg is None:
+            attrs['quantity_kg'] = catch.quantity
+        elif quantity_kg <= 0 or quantity_kg > catch.quantity:
+            raise serializers.ValidationError('Kilo za coolbox lazima ziwe zaidi ya sifuri na zisizidi kilo za samaki waliopo.')
+
+        amount_per_day = attrs.get('amount_per_day')
+        if amount_per_day is None:
+            attrs['amount_per_day'] = Decimal('3000')
+        elif amount_per_day < 0:
+            raise serializers.ValidationError('Kiasi cha malipo kwa siku hakiwezi kuwa hasi.')
+
         location = attrs.get('location')
         valid_locations = {choice[0] for choice in CoolBoxRental.LOCATION_CHOICES}
         if location not in valid_locations:
             raise serializers.ValidationError('Chagua eneo sahihi la coolbox.')
 
         return attrs
+
+    def create(self, validated_data):
+        validated_data['price'] = validated_data.get('amount_per_day', Decimal('0')) * validated_data.get('days', 1)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        quantity_kg = validated_data.get('quantity_kg', instance.quantity_kg)
+        amount_per_day = validated_data.get('amount_per_day', instance.amount_per_day)
+        days = validated_data.get('days', instance.days)
+        validated_data['price'] = amount_per_day * days
+
+        if instance.catch and quantity_kg > instance.catch.quantity:
+            raise serializers.ValidationError('Kilo za coolbox haziwezi kuzidi kilo za samaki zilizobaki.')
+
+        return super().update(instance, validated_data)
 
     def get_active_catch(self, obj):
         catch = obj.catch
