@@ -148,16 +148,31 @@ class LoginView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        username = request.data.get('username')
-        email = request.data.get('email')
+        username = (request.data.get('username') or '').strip()
+        email = (request.data.get('email') or '').strip().lower()
         password = request.data.get('password')
 
         if not username and email:
-            user = User.objects.filter(email=email).first()
+            user = User.objects.filter(email__iexact=email).first()
             username = user.username if user else None
+        elif username:
+            matched_user = User.objects.filter(username__iexact=username).first()
+            if matched_user:
+                username = matched_user.username
 
         user = authenticate(request=request, username=username, password=password)
         if not user:
+            inactive_user = None
+            if email:
+                inactive_user = User.objects.filter(email__iexact=email, is_active=False).first()
+            elif username:
+                inactive_user = User.objects.filter(username__iexact=username, is_active=False).first()
+
+            if inactive_user:
+                return Response(
+                    {'detail': 'Akaunti hii ilikuwa imezimwa kimakosa. Tafadhali jaribu tena sasa.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             return Response({'detail': 'Umekosea nywila au baruapepe'}, status=status.HTTP_400_BAD_REQUEST)
 
         token = _issue_auth_token(user)

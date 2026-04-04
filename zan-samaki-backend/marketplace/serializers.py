@@ -28,14 +28,13 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         user = User.objects.create_user(
-            username=validated_data['username'],
-            email=validated_data['email'],
+            username=validated_data['username'].strip(),
+            email=validated_data['email'].strip().lower(),
             password=validated_data['password'],
             role=validated_data.get('role', 'buyer'),
             phone=validated_data.get('phone', ''),
             location=validated_data.get('location', 'Zanzibar'),
-            is_active=False,
-            is_verified=False,
+            is_active=True,
         )
         return user
 
