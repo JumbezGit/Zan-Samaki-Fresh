@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Activity, Clock3, Gavel, Radio, Users, Waves } from 'lucide-react'
+import { Activity, Clock3, Fish, Gavel, Radio, Users, Waves } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface LiveAuction {
@@ -22,6 +22,7 @@ interface LiveAuction {
     title: string
     location: string
     quantity: string
+    photo?: string | null
   }
 }
 
@@ -232,6 +233,23 @@ const BuyerLivePage = () => {
                   key={auction.id}
                   className="rounded-2xl border border-ocean-100 bg-gradient-to-br from-white to-ocean-50 p-5 shadow-sm"
                 >
+                  <div className="mb-4 overflow-hidden rounded-2xl border border-ocean-100 bg-slate-100">
+                    {auction.catch.photo ? (
+                      <img
+                        src={auction.catch.photo}
+                        alt={auction.catch.title}
+                        className="h-48 w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-48 items-center justify-center bg-gradient-to-br from-cyan-100 via-ocean-100 to-emerald-100 text-ocean-700">
+                        <div className="text-center">
+                          <Fish className="mx-auto h-14 w-14 opacity-70" />
+                          <p className="mt-3 text-sm font-semibold">Hakuna picha ya samaki</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="mb-4 flex items-start justify-between gap-3">
                     <div>
                       <h3 className="text-xl font-bold text-slate-900">{auction.catch.title}</h3>
@@ -262,6 +280,10 @@ const BuyerLivePage = () => {
 
                   <p className="mb-3 text-sm text-slate-600">
                     Gap ya kuongeza: <span className="font-semibold">TZS {Number(auction.increment_gap).toLocaleString()}</span>
+                  </p>
+
+                  <p className="mb-4 text-sm text-slate-600">
+                    Kilo zilizopo: <span className="font-semibold">{Number(auction.catch.quantity).toLocaleString()} kg</span>
                   </p>
 
                   <div className="flex items-center justify-between">
