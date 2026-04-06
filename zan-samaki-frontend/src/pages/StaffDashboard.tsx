@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AlertTriangle, CheckCircle2, Loader2, Snowflake, Wrench } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useLanguage } from '@/context/LanguageContext'
 
 type CoolBoxCondition = 'good' | 'bad' | 'broken'
 
@@ -62,6 +63,54 @@ const formatDateTime = (value: string) =>
   })
 
 const StaffDashboard = () => {
+  const { language } = useLanguage()
+  const copy = language === 'en'
+    ? {
+      good: 'Good',
+      bad: 'Bad',
+      broken: 'Broken',
+      loadError: 'Failed to load your assigned coolboxes',
+      updated: 'updated',
+      updateError: 'Failed to update coolbox condition',
+      requestApproved: 'CoolBox request approved',
+      requestRejected: 'CoolBox request rejected',
+      requestSaved: 'CoolBox kilos and daily amount updated',
+      requestApproveError: 'Failed to approve coolbox request',
+      requestRejectError: 'Failed to reject coolbox request',
+      requestSaveError: 'Failed to update coolbox request details',
+      loading: 'Loading assigned coolboxes...',
+      dashboard: 'Staff Dashboard',
+      title: 'Solar CoolBox Status Updates',
+      subtitle: 'Update the condition of the coolboxes assigned to you so admin can track what is working well and what needs attention.',
+      assignedCoolboxes: 'Assigned CoolBoxes',
+      requests: 'CoolBox Requests',
+      approveRequests: 'Approve Fisher Requests',
+      pendingRequests: 'Pending Requests',
+      noRequests: 'No coolbox requests for your assigned locations yet.'
+    }
+    : {
+      good: 'Nzuri',
+      bad: 'Mbovu',
+      broken: 'Imeharibika',
+      loadError: 'Imeshindikana kupakia coolbox ulizopangiwa',
+      updated: 'imesasishwa',
+      updateError: 'Imeshindikana kusasisha hali ya coolbox',
+      requestApproved: 'Ombi la CoolBox limekubaliwa',
+      requestRejected: 'Ombi la CoolBox limekataliwa',
+      requestSaved: 'Kilo na kiasi kwa siku vya coolbox vimesasishwa',
+      requestApproveError: 'Imeshindikana kukubali ombi la coolbox',
+      requestRejectError: 'Imeshindikana kukataa ombi la coolbox',
+      requestSaveError: 'Imeshindikana kusasisha maelezo ya ombi la coolbox',
+      loading: 'Inapakia coolbox ulizopangiwa...',
+      dashboard: 'Dashibodi ya Staff',
+      title: 'Marekebisho ya Hali ya Solar CoolBox',
+      subtitle: 'Sasisha hali ya coolbox ulizopangiwa ili admin aweze kufuatilia vinavyofanya kazi vizuri na vinavyohitaji matengenezo.',
+      assignedCoolboxes: 'CoolBox Ulizopangiwa',
+      requests: 'Maombi ya CoolBox',
+      approveRequests: 'Kubali Maombi ya Wavuvi',
+      pendingRequests: 'Maombi Yanayosubiri',
+      noRequests: 'Hakuna maombi ya coolbox kwa maeneo uliyopangiwa bado.'
+    }
   const [coolboxes, setCoolboxes] = useState<CoolBoxRecord[]>([])
   const [coolboxRequests, setCoolboxRequests] = useState<CoolBoxRequestRecord[]>([])
   const [draftNotes, setDraftNotes] = useState<Record<number, string>>({})
@@ -117,7 +166,7 @@ const StaffDashboard = () => {
         }, {})
       )
     } catch (error) {
-      toast.error('Failed to load your assigned coolboxes')
+      toast.error(copy.loadError)
     } finally {
       setLoading(false)
     }
@@ -153,10 +202,10 @@ const StaffDashboard = () => {
         condition_status,
         notes: draftNotes[item.id] || ''
       })
-      toast.success(`CoolBox ${item.location} updated`)
+      toast.success(`CoolBox ${item.location} ${copy.updated}`)
       await loadCoolboxes()
     } catch (error) {
-      toast.error('Failed to update coolbox condition')
+      toast.error(copy.updateError)
     } finally {
       setBusyKey(null)
     }
@@ -174,19 +223,19 @@ const StaffDashboard = () => {
       })
       toast.success(
         status === 'approved'
-          ? 'CoolBox request approved'
+          ? copy.requestApproved
           : status === 'rejected'
-            ? 'CoolBox request rejected'
-            : 'CoolBox kilos and daily amount updated'
+            ? copy.requestRejected
+            : copy.requestSaved
       )
       await loadCoolboxes()
     } catch (error) {
       toast.error(
         status === 'approved'
-          ? 'Failed to approve coolbox request'
+          ? copy.requestApproveError
           : status === 'rejected'
-            ? 'Failed to reject coolbox request'
-            : 'Failed to update coolbox request details'
+            ? copy.requestRejectError
+            : copy.requestSaveError
       )
     } finally {
       setBusyKey(null)
@@ -198,7 +247,7 @@ const StaffDashboard = () => {
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="flex items-center gap-3 rounded-3xl border border-slate-200 bg-white/90 px-6 py-5 text-slate-700 shadow-xl">
           <Loader2 className="h-5 w-5 animate-spin" />
-          <span className="font-medium">Loading assigned coolboxes...</span>
+          <span className="font-medium">{copy.loading}</span>
         </div>
       </div>
     )
@@ -211,15 +260,12 @@ const StaffDashboard = () => {
       <section className="rounded-[2rem] border border-slate-200 bg-white/90 p-8 shadow-xl backdrop-blur-sm">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-ocean-600">Staff Dashboard</p>
-            <h1 className="mt-2 text-3xl font-bold text-slate-950">Solar CoolBox Status Updates</h1>
-            <p className="mt-3 max-w-2xl text-slate-600">
-              Update the condition of the coolboxes assigned to you so admin can track what is working well and what
-              needs attention.
-            </p>
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-ocean-600">{copy.dashboard}</p>
+            <h1 className="mt-2 text-3xl font-bold text-slate-950">{copy.title}</h1>
+            <p className="mt-3 max-w-2xl text-slate-600">{copy.subtitle}</p>
           </div>
           <div className="rounded-3xl bg-slate-950 px-5 py-4 text-white">
-            <p className="text-sm text-white/70">Assigned CoolBoxes</p>
+            <p className="text-sm text-white/70">{copy.assignedCoolboxes}</p>
             <p className="text-3xl font-bold">{coolboxes.length}</p>
           </div>
         </div>
@@ -228,18 +274,18 @@ const StaffDashboard = () => {
       <section className="rounded-[2rem] border border-slate-200 bg-white/90 p-8 shadow-xl backdrop-blur-sm">
         <div className="mb-6 flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-ocean-600">CoolBox Requests</p>
-            <h2 className="mt-2 text-2xl font-bold text-slate-950">Approve Fisher Requests</h2>
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-ocean-600">{copy.requests}</p>
+            <h2 className="mt-2 text-2xl font-bold text-slate-950">{copy.approveRequests}</h2>
           </div>
           <div className="rounded-3xl bg-amber-50 px-5 py-4 text-amber-800">
-            <p className="text-sm">Pending Requests</p>
+            <p className="text-sm">{copy.pendingRequests}</p>
             <p className="text-3xl font-bold">{pendingRequests.length}</p>
           </div>
         </div>
 
         {coolboxRequests.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-slate-500">
-            No coolbox requests for your assigned locations yet.
+            {copy.noRequests}
           </div>
         ) : (
           <div className="grid gap-4">

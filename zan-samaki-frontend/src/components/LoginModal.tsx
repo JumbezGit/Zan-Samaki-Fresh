@@ -4,16 +4,69 @@ import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Eye, EyeOff, Lock, Mail, UserPlus } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useLanguage } from '@/context/LanguageContext'
 
 type UserRole = 'fisher' | 'buyer' | 'staff' | 'admin'
 type RegistrationRole = 'fisher' | 'buyer'
 
-const roleLabels: Record<UserRole, string> = {
-  fisher: 'Mvuvi',
-  buyer: 'Mnunuzi',
-  staff: 'Staff',
-  admin: 'Admin'
-}
+const translations = {
+  en: {
+    roles: {
+      fisher: 'Fisher',
+      buyer: 'Buyer',
+      staff: 'Staff',
+      admin: 'Admin'
+    },
+    login: 'Login',
+    register: 'Register',
+    username: 'Username',
+    usernameRequired: 'Username is required',
+    usernamePlaceholder: 'Your username',
+    email: 'Email or Phone',
+    emailRequired: 'Email is required',
+    password: 'Password',
+    passwordRequired: 'Password is required',
+    passwordLength: 'Password must be at least 5 characters',
+    passwordPlaceholder: 'Your password',
+    hidePassword: 'Hide password',
+    showPassword: 'Show password',
+    loading: 'Loading...',
+    noAccount: "Don't have an account? Register here",
+    hasAccount: 'Already have an account? Login here',
+    welcomeBack: 'Welcome back!',
+    accountCreated: 'Your account has been created!',
+    genericError: 'Something went wrong. Please try again.',
+    networkError: 'Network issue. Please try again.'
+  },
+  sw: {
+    roles: {
+      fisher: 'Mvuvi',
+      buyer: 'Mnunuzi',
+      staff: 'Staff',
+      admin: 'Admin'
+    },
+    login: 'Ingia',
+    register: 'Jisajili',
+    username: 'Jina la Mtumiaji',
+    usernameRequired: 'Jina ni lazima',
+    usernamePlaceholder: 'Jina lako',
+    email: 'Barua Pepe au Simu',
+    emailRequired: 'Barua pepe ni lazima',
+    password: 'Nenosiri',
+    passwordRequired: 'Nenosiri ni lazima',
+    passwordLength: 'Nenosiri lazima liwe na herufi 5+',
+    passwordPlaceholder: 'Nenosiri lako',
+    hidePassword: 'Ficha nenosiri',
+    showPassword: 'Onyesha nenosiri',
+    loading: 'Inapakia...',
+    noAccount: 'Huna akaunti? Jisajili hapa',
+    hasAccount: 'Una akaunti? Ingia hapa',
+    welcomeBack: 'Karibu tena!',
+    accountCreated: 'Akaunti yako imetengenezwa!',
+    genericError: 'Kosa! Jaribu tena.',
+    networkError: 'Tatizo la mtandao. Jaribu tena.'
+  }
+} as const
 
 interface LoginModalProps {
   isOpen: boolean
@@ -72,8 +125,10 @@ const LoginModal = ({
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const { register, handleSubmit, formState: { errors }, reset } = useForm<AuthFormValues>()
+  const { language } = useLanguage()
   const activeRole = isLogin ? initialRole : role
-  const authTitle = `${roleLabels[activeRole]}-${isLogin ? 'Ingia' : 'Jisajili'}`
+  const copy = translations[language]
+  const authTitle = `${copy.roles[activeRole]} ${isLogin ? copy.login : copy.register}`
   const allowRegistration = initialRole !== 'admin' && initialRole !== 'staff'
 
   useEffect(() => {
@@ -110,15 +165,15 @@ const LoginModal = ({
         const accepted = await onSuccess(activeRole)
 
         if (accepted) {
-          toast.success(isLogin ? 'Karibu tena!' : 'Akaunti yako imetengenezwa!')
+          toast.success(isLogin ? copy.welcomeBack : copy.accountCreated)
           reset()
           onClose()
         }
       } else {
-        toast.error(getErrorMessage(responseData) || 'Kosa! Jaribu tena.')
+        toast.error(getErrorMessage(responseData) || copy.genericError)
       }
     } catch (err) {
-      toast.error('Tatizo la mtandao. Jaribu tena.')
+      toast.error(copy.networkError)
     } finally {
       setLoading(false)
     }
@@ -144,15 +199,15 @@ const LoginModal = ({
           {!isLogin && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Jina la Mtumiaji
+                {copy.username}
               </label>
               <div className="relative">
                 <UserPlus className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
-                  {...register('username', { required: 'Jina ni lazima' })}
+                  {...register('username', { required: copy.usernameRequired })}
                   disabled={loading}
                   className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-ocean-500 focus:border-transparent transition-all"
-                  placeholder="Jina lako"
+                  placeholder={copy.usernamePlaceholder}
                 />
               </div>
               {errors.username && <p className="text-red-500 text-sm mt-1">{String(errors.username.message)}</p>}
@@ -161,12 +216,12 @@ const LoginModal = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Barua Pepe au Simu
+              {copy.email}
             </label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
-                {...register('email', { required: 'Barua pepe ni lazima' })}
+                {...register('email', { required: copy.emailRequired })}
                 disabled={loading}
                 type="email"
                 className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-ocean-500 focus:border-transparent transition-all"
@@ -177,24 +232,24 @@ const LoginModal = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Nenosiri</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{copy.password}</label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
-                {...register('password', { required: 'Nenosiri ni lazima', minLength: {
+                {...register('password', { required: copy.passwordRequired, minLength: {
                   value: 5,
-                  message: 'Nenosiri lazima liwe na herufi 5+'
+                  message: copy.passwordLength
                 } })}
                 disabled={loading}
                 type={showPassword ? 'text' : 'password'}
                 className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-ocean-500 focus:border-transparent transition-all"
-                placeholder="Nenosiri lako"
+                placeholder={copy.passwordPlaceholder}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((value) => !value)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-ocean-600"
-                aria-label={showPassword ? 'Ficha nenosiri' : 'Onyesha nenosiri'}
+                aria-label={showPassword ? copy.hidePassword : copy.showPassword}
               >
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
@@ -210,10 +265,10 @@ const LoginModal = ({
             {loading ? (
               <>
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                <span>Inapakia...</span>
+                <span>{copy.loading}</span>
               </>
             ) : (
-              <>{isLogin ? 'Ingia' : 'Jisajili'}</>
+              <>{isLogin ? copy.login : copy.register}</>
             )}
           </button>
         </form>
@@ -230,8 +285,8 @@ const LoginModal = ({
               className="text-ocean-600 hover:text-ocean-700 font-semibold transition-colors disabled:opacity-50"
             >
               {isLogin
-                ? 'Huna akaunti? Jisajili hapa'
-                : 'Una akaunti? Ingia hapa'
+                ? copy.noAccount
+                : copy.hasAccount
               }
             </button>
           )}

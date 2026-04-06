@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Menu, Shield } from 'lucide-react'
 import BrandLogo from '@/components/BrandLogo'
 import UserMenu from '@/components/UserMenu'
+import { useLanguage } from '@/context/LanguageContext'
 
 interface AdminNavbarProps {
   username: string
@@ -10,6 +11,9 @@ interface AdminNavbarProps {
 }
 
 const AdminNavbar = ({ username, onLogout, onOpenSidebar }: AdminNavbarProps) => {
+  const { language } = useLanguage()
+  const openMenuLabel = language === 'en' ? 'Open menu' : 'Fungua menu'
+
   return (
     <nav className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-ocean-100">
       <div className="max-w-7xl mx-auto px-4">
@@ -29,7 +33,7 @@ const AdminNavbar = ({ username, onLogout, onOpenSidebar }: AdminNavbarProps) =>
 
           <div className="flex items-center gap-2 md:hidden">
             <UserMenu username={username} onLogout={onLogout} compact />
-            <button onClick={onOpenSidebar} className="p-2" aria-label="Open menu">
+            <button onClick={onOpenSidebar} className="p-2" aria-label={openMenuLabel}>
               <Menu className="w-6 h-6" />
             </button>
           </div>

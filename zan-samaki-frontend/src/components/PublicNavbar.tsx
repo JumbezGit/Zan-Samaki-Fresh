@@ -1,8 +1,26 @@
 import { Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import BrandLogo from '@/components/BrandLogo'
+import { useLanguage } from '@/context/LanguageContext'
 
 type UserRole = 'fisher' | 'buyer' | 'staff' | 'admin'
+
+const labels = {
+  en: {
+    openMenu: 'Open menu',
+    fisher: 'Fisher Login',
+    buyer: 'Buyer Login',
+    admin: 'Admin Login',
+    staff: 'Staff Login'
+  },
+  sw: {
+    openMenu: 'Fungua menu',
+    fisher: 'Mvuvi Ingia',
+    buyer: 'Mnunuzi Ingia',
+    admin: 'Admin Ingia',
+    staff: 'Staff Ingia'
+  }
+} as const
 
 interface PublicNavbarProps {
   onLogin: (role: UserRole) => void
@@ -11,6 +29,8 @@ interface PublicNavbarProps {
 const PublicNavbar = ({ onLogin }: PublicNavbarProps) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [activeRole, setActiveRole] = useState<UserRole>('fisher')
+  const { language, setLanguage } = useLanguage()
+  const copy = labels[language]
 
   const mobileButtonClass = (role: UserRole) =>
     `rounded-xl px-4 py-3 text-left font-semibold transition-all ${
@@ -31,11 +51,26 @@ const PublicNavbar = ({ onLogin }: PublicNavbarProps) => {
         <div className="flex justify-between items-center h-16">
           <BrandLogo />
 
-
+          <div className="hidden items-center gap-2 md:flex">
+            <button
+              type="button"
+              onClick={() => setLanguage('en')}
+              className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${language === 'en' ? 'bg-ocean-600 text-white' : 'text-slate-600 hover:bg-ocean-50'}`}
+            >
+              EN
+            </button>
+            <button
+              type="button"
+              onClick={() => setLanguage('sw')}
+              className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${language === 'sw' ? 'bg-ocean-600 text-white' : 'text-slate-600 hover:bg-ocean-50'}`}
+            >
+              SW
+            </button>
+          </div>
 
           <button
             className="md:hidden p-2"
-            aria-label="Open menu"
+            aria-label={copy.openMenu}
             aria-expanded={mobileMenuOpen}
             onClick={() => setMobileMenuOpen((currentValue) => !currentValue)}
           >
@@ -50,25 +85,25 @@ const PublicNavbar = ({ onLogin }: PublicNavbarProps) => {
                 onClick={() => handleMobileRole('fisher')}
                 className={mobileButtonClass('fisher')}
               >
-                Mvuvi Ingia
+                {copy.fisher}
               </button>
               <button
                 onClick={() => handleMobileRole('buyer')}
                 className={mobileButtonClass('buyer')}
               >
-                Mnunuzi Ingia
+                {copy.buyer}
               </button>
               <button
                 onClick={() => handleMobileRole('admin')}
                 className={mobileButtonClass('admin')}
               >
-                Admin Ingia
+                {copy.admin}
               </button>
               <button
                 onClick={() => handleMobileRole('staff')}
                 className={mobileButtonClass('staff')}
               >
-                Staff Ingia
+                {copy.staff}
               </button>
             </div>
           </div>

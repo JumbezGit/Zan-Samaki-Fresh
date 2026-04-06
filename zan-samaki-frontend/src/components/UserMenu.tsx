@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronDown, LogOut, Settings, User } from 'lucide-react'
+import { useLanguage } from '@/context/LanguageContext'
 
 interface UserMenuProps {
   username: string
@@ -11,6 +12,20 @@ interface UserMenuProps {
 const UserMenu = ({ username, onLogout, compact = false }: UserMenuProps) => {
   const [isOpen, setIsOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const { language } = useLanguage()
+  const copy = language === 'en'
+    ? {
+      openMenu: 'Open user menu',
+      account: 'Account',
+      settings: 'Settings',
+      logout: 'Logout'
+    }
+    : {
+      openMenu: 'Fungua menyu ya mtumiaji',
+      account: 'Akaunti',
+      settings: 'Mipangilio',
+      logout: 'Toka'
+    }
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -42,7 +57,7 @@ const UserMenu = ({ username, onLogout, compact = false }: UserMenuProps) => {
         className={`flex items-center rounded-xl px-2 py-2 transition-all hover:bg-ocean-50 ${compact ? 'space-x-0' : 'space-x-3'}`}
         aria-haspopup="menu"
         aria-expanded={isOpen}
-        aria-label="Open user menu"
+        aria-label={copy.openMenu}
       >
         <div className="flex h-9 w-9 items-center justify-center rounded-full bg-ocean-600">
           <User className="h-4 w-4 text-white" />
@@ -57,7 +72,7 @@ const UserMenu = ({ username, onLogout, compact = false }: UserMenuProps) => {
           role="menu"
         >
           <div className="border-b border-ocean-50 px-4 py-3">
-            <p className="text-xs uppercase tracking-wide text-gray-500">Account</p>
+            <p className="text-xs uppercase tracking-wide text-gray-500">{copy.account}</p>
             <p className="truncate font-semibold text-gray-800">{username}</p>
           </div>
           <div className="p-2">
@@ -68,7 +83,7 @@ const UserMenu = ({ username, onLogout, compact = false }: UserMenuProps) => {
               role="menuitem"
             >
               <Settings className="h-4 w-4" />
-              <span>Settings</span>
+              <span>{copy.settings}</span>
             </Link>
             <button
               type="button"
@@ -80,7 +95,7 @@ const UserMenu = ({ username, onLogout, compact = false }: UserMenuProps) => {
               role="menuitem"
             >
               <LogOut className="h-4 w-4" />
-              <span>Logout</span>
+              <span>{copy.logout}</span>
             </button>
           </div>
         </div>

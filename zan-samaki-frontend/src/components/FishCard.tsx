@@ -1,4 +1,5 @@
 import { Fish, MapPin, ShoppingCart, User } from 'lucide-react'
+import { useLanguage } from '@/context/LanguageContext'
 
 export interface FishCardItem {
   id: number
@@ -19,6 +20,19 @@ interface FishCardProps {
 }
 
 const FishCard = ({ item, onSelect }: FishCardProps) => {
+  const { language } = useLanguage()
+  const copy = language === 'en'
+    ? {
+      stock: 'Stock',
+      pricePerKg: 'Price per kg',
+      buy: 'Buy'
+    }
+    : {
+      stock: 'Stock',
+      pricePerKg: 'Bei kwa kilo',
+      buy: 'Nunua'
+    }
+
   return (
     <article
       className="group cursor-pointer overflow-hidden rounded-[1.5rem] border border-white/60 bg-white/80 shadow-lg transition-all hover:-translate-y-1.5 hover:shadow-2xl"
@@ -52,13 +66,13 @@ const FishCard = ({ item, onSelect }: FishCardProps) => {
             </p>
           </div>
           <div className="rounded-xl bg-emerald-50 px-2.5 py-1.5 text-right">
-            <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">Stock</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">{copy.stock}</p>
             <p className="text-base font-bold text-emerald-900">{item.quantity} kg</p>
           </div>
         </div>
 
         <div className="mb-4 rounded-xl bg-slate-50 p-3">
-          <p className="text-sm text-slate-500">Bei kwa kilo</p>
+          <p className="text-sm text-slate-500">{copy.pricePerKg}</p>
           <p className="text-xl font-bold text-ocean-700">
             TZS {item.price_per_kg.toLocaleString()}
           </p>
@@ -80,7 +94,7 @@ const FishCard = ({ item, onSelect }: FishCardProps) => {
             className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 px-3 py-2.5 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl"
           >
             <ShoppingCart className="h-4 w-4" />
-            Nunua
+            {copy.buy}
           </button>
         </div>
       </div>

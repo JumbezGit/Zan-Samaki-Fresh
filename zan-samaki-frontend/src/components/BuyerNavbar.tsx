@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { Menu, Package, Radio, Search, ShoppingCart } from 'lucide-react'
 import BrandLogo from '@/components/BrandLogo'
 import UserMenu from '@/components/UserMenu'
+import { useLanguage } from '@/context/LanguageContext'
 
 interface BuyerNavbarProps {
   username: string
@@ -14,6 +15,22 @@ const BuyerNavbar = ({ username, onLogout }: BuyerNavbarProps) => {
   const [orderCount, setOrderCount] = useState(0)
   const [liveCount, setLiveCount] = useState(0)
   const navigate = useNavigate()
+  const { language } = useLanguage()
+  const copy = language === 'en'
+    ? {
+      searchPlaceholder: 'Search fish...',
+      market: 'Market',
+      orders: 'Orders',
+      live: 'Live',
+      openMenu: 'Open menu'
+    }
+    : {
+      searchPlaceholder: 'Tafuta samaki...',
+      market: 'Soko',
+      orders: 'Order',
+      live: 'Live',
+      openMenu: 'Fungua menu'
+    }
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     `flex items-center space-x-2 rounded-lg px-3 py-2 font-medium transition-all ${
       isActive
@@ -118,7 +135,7 @@ const BuyerNavbar = ({ username, onLogout }: BuyerNavbarProps) => {
                 type="search"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder="Tafuta samaki..."
+                placeholder={copy.searchPlaceholder}
                 className="w-56 rounded-xl border border-ocean-100 bg-white px-10 py-2 text-sm text-gray-700 shadow-sm outline-none transition-all focus:border-ocean-400 focus:ring-2 focus:ring-ocean-200"
               />
             </form>
@@ -128,14 +145,14 @@ const BuyerNavbar = ({ username, onLogout }: BuyerNavbarProps) => {
               className={navLinkClass}
             >
               <ShoppingCart className="w-5 h-5" />
-              <span>Soko</span>
+              <span>{copy.market}</span>
             </NavLink>
             <NavLink
               to="/buyer/orders"
               className={navLinkClass}
             >
               <Package className="w-5 h-5" />
-              <span>Order</span>
+              <span>{copy.orders}</span>
               {renderBubble(orderCount)}
             </NavLink>
             <NavLink
@@ -143,7 +160,7 @@ const BuyerNavbar = ({ username, onLogout }: BuyerNavbarProps) => {
               className={navLinkClass}
             >
               <Radio className="w-5 h-5" />
-              <span>Live</span>
+              <span>{copy.live}</span>
               {renderBubble(liveCount)}
             </NavLink>
             <UserMenu username={username} onLogout={onLogout} />
@@ -151,7 +168,7 @@ const BuyerNavbar = ({ username, onLogout }: BuyerNavbarProps) => {
 
           <div className="flex items-center gap-2 md:hidden">
             <UserMenu username={username} onLogout={onLogout} compact />
-            <button className="p-2" aria-label="Open menu">
+            <button className="p-2" aria-label={copy.openMenu}>
               <Menu className="w-6 h-6" />
             </button>
           </div>

@@ -13,6 +13,7 @@ import {
   XCircle
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useLanguage } from '@/context/LanguageContext'
 
 type AdminSection = 'overview' | 'catches' | 'users' | 'orders' | 'coolbox' | 'settings'
 type UserRole = 'fisher' | 'buyer' | 'staff' | 'admin'
@@ -135,6 +136,30 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboard = ({ isSidebarOpen, onCloseSidebar, initialSection = 'overview' }: AdminDashboardProps) => {
+  const { language } = useLanguage()
+  const copy = language === 'en'
+    ? {
+      loadError: 'Failed to load admin data',
+      actionError: 'Action failed',
+      refresh: 'Refresh Data',
+      panel: 'Admin Panel',
+      controlCenter: 'Solar CoolBox Control Center',
+      users: 'Users',
+      staff: 'Staff',
+      broken: 'Broken',
+      loading: 'Loading admin workspace...'
+    }
+    : {
+      loadError: 'Imeshindikana kupakia data za admin',
+      actionError: 'Kitendo kimeshindwa',
+      refresh: 'Onyesha upya data',
+      panel: 'Paneli ya Admin',
+      controlCenter: 'Kituo cha Kudhibiti Solar CoolBox',
+      users: 'Watumiaji',
+      staff: 'Staff',
+      broken: 'Vilivyoharibika',
+      loading: 'Inapakia nafasi ya kazi ya admin...'
+    }
   const [activeSection, setActiveSection] = useState<AdminSection>(initialSection)
   const [users, setUsers] = useState<AdminUser[]>([])
   const [catches, setCatches] = useState<FishCatchRecord[]>([])
@@ -195,7 +220,7 @@ const AdminDashboard = ({ isSidebarOpen, onCloseSidebar, initialSection = 'overv
         }, {})
       )
     } catch (error) {
-      toast.error('Failed to load admin data')
+      toast.error(copy.loadError)
     } finally {
       setLoading(false)
     }
@@ -227,7 +252,7 @@ const AdminDashboard = ({ isSidebarOpen, onCloseSidebar, initialSection = 'overv
       toast.success(successMessage)
       await loadAdminData()
     } catch (error) {
-      toast.error('Action failed')
+      toast.error(copy.actionError)
     } finally {
       setBusyKey(null)
     }
@@ -693,7 +718,7 @@ const AdminDashboard = ({ isSidebarOpen, onCloseSidebar, initialSection = 'overv
         <div className="flex min-h-[420px] items-center justify-center rounded-[2rem] border border-slate-200 bg-white/80">
           <div className="flex items-center gap-3 text-slate-600">
             <Loader2 className="h-6 w-6 animate-spin" />
-            <span className="font-medium">Loading admin workspace...</span>
+            <span className="font-medium">{copy.loading}</span>
           </div>
         </div>
       )
@@ -760,7 +785,7 @@ const AdminDashboard = ({ isSidebarOpen, onCloseSidebar, initialSection = 'overv
           className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl border border-white/15 px-4 py-3 font-semibold text-slate-100 transition-all hover:bg-white/10"
         >
           <RefreshCw className="h-4 w-4" />
-          Refresh Data
+          {copy.refresh}
         </button>
       </aside>
 
@@ -768,13 +793,13 @@ const AdminDashboard = ({ isSidebarOpen, onCloseSidebar, initialSection = 'overv
         <div className="rounded-[1rem] border border-slate-200 bg-white/85 p-6 backdrop-blur-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-ocean-600">Admin Panel</p>
-              <h2 className="mt-2 text-3xl font-bold text-slate-950">Solar CoolBox Control Center</h2>
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-ocean-600">{copy.panel}</p>
+              <h2 className="mt-2 text-3xl font-bold text-slate-950">{copy.controlCenter}</h2>
             </div>
             <div className="flex flex-wrap gap-3">
-              <SummaryChip label="Users" value={users.length} icon={Users} />
-              <SummaryChip label="Staff" value={staffUsers.length} icon={User} />
-              <SummaryChip label="Broken" value={stats.brokenCoolboxes} icon={XCircle} />
+              <SummaryChip label={copy.users} value={users.length} icon={Users} />
+              <SummaryChip label={copy.staff} value={staffUsers.length} icon={User} />
+              <SummaryChip label={copy.broken} value={stats.brokenCoolboxes} icon={XCircle} />
             </div>
           </div>
         </div>

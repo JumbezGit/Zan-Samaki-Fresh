@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AlertCircle, Clock3, DollarSign, Fish, Gavel, MapPin, Plus, Upload } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useLanguage } from '@/context/LanguageContext'
 
 interface Catch {
   id: number
@@ -40,6 +41,46 @@ interface Auction {
 }
 
 const FisherDashboard = () => {
+  const { language } = useLanguage()
+  const copy = language === 'en'
+    ? {
+      loadCatchError: 'Unable to load catches',
+      loadAuctionError: 'Unable to load auctions',
+      uploadSuccess: 'Catch uploaded!',
+      uploadError: 'Upload failed. Please try again.',
+      auctionCreated: 'Auction started!',
+      auctionCreateError: 'Unable to start auction',
+      loadCoolboxError: 'Unable to load coolbox data',
+      needEligibleCatch: 'Upload approved fish that is still available before requesting a coolbox.',
+      coolboxRequested: 'Coolbox request submitted!',
+      coolboxRequestError: 'Coolbox request failed',
+      earningsToday: 'Today\'s Earnings',
+      catches: 'Catches',
+      auctionsSold: 'Auctions Sold',
+      auctionLive: 'Live Auctions',
+      uploadCatch: 'Upload New Catch',
+      startAuction: 'Start Auction',
+      requestCoolbox: 'Request CoolBox'
+    }
+    : {
+      loadCatchError: 'Tatizo la kupakia uvuvi',
+      loadAuctionError: 'Tatizo la kupakia minada',
+      uploadSuccess: 'Uvuvi umepakiwa!',
+      uploadError: 'Kosa la kupakia. Jaribu tena.',
+      auctionCreated: 'Mnada umeanzishwa!',
+      auctionCreateError: 'Imeshindikana kuanzisha mnada',
+      loadCoolboxError: 'Tatizo la kupakia coolbox',
+      needEligibleCatch: 'Pakia samaki waliothibitishwa na waliopo sokoni kwanza kabla ya kuomba coolbox.',
+      coolboxRequested: 'Ombi la sanduku la baridi limewasilishwa!',
+      coolboxRequestError: 'Tatizo la ombi la sanduku',
+      earningsToday: 'Mapato Leo',
+      catches: 'Uvuvi',
+      auctionsSold: 'Minada Sold',
+      auctionLive: 'Mnada Live',
+      uploadCatch: 'Pakia Uvuvi Mpya',
+      startAuction: 'Anzisha Mnada',
+      requestCoolbox: 'Omba Sanduku la Baridi'
+    }
   const COOLBOX_LOCATIONS = ['Malindi', 'Mkokotoni', 'Chwaka', 'Paje']
   const [catches, setCatches] = useState<Catch[]>([])
   const [auctions, setAuctions] = useState<Auction[]>([])
@@ -114,7 +155,7 @@ const FisherDashboard = () => {
       const data = await res.json()
       setCatches(Array.isArray(data) ? data : [])
     } catch (err) {
-      toast.error('Tatizo la kupakia uvuvi')
+      toast.error(copy.loadCatchError)
     }
   }
 
@@ -127,7 +168,7 @@ const FisherDashboard = () => {
       const data = await res.json()
       setAuctions(Array.isArray(data) ? data : [])
     } catch (err) {
-      toast.error('Tatizo la kupakia minada')
+      toast.error(copy.loadAuctionError)
     }
   }
 
@@ -153,7 +194,7 @@ const FisherDashboard = () => {
       })
 
       if (res.ok) {
-        toast.success('Uvuvi umepakiwa!')
+        toast.success(copy.uploadSuccess)
         setShowForm(false)
         setFormData({
           title: '',
@@ -167,10 +208,10 @@ const FisherDashboard = () => {
         })
         void fetchCatches()
       } else {
-        toast.error('Kosa la kupakia. Jaribu tena.')
+        toast.error(copy.uploadError)
       }
     } catch (err) {
-      toast.error('Kosa la kupakia. Jaribu tena.')
+      toast.error(copy.uploadError)
     } finally {
       setLoading(false)
     }
@@ -191,7 +232,7 @@ const FisherDashboard = () => {
       })
 
       if (res.ok) {
-        toast.success('Mnada umeanzishwa!')
+        toast.success(copy.auctionCreated)
         setShowAuctionForm(false)
         setAuctionData({
           catch: '',
@@ -202,10 +243,10 @@ const FisherDashboard = () => {
         void fetchCatches()
       } else {
         const data = await res.json().catch(() => null)
-        toast.error(data?.detail || 'Imeshindikana kuanzisha mnada')
+        toast.error(data?.detail || copy.auctionCreateError)
       }
     } catch (err) {
-      toast.error('Tatizo la kuanzisha mnada')
+      toast.error(copy.auctionCreateError)
     }
   }
 
@@ -218,13 +259,13 @@ const FisherDashboard = () => {
       const data = await res.json()
       setCoolBoxRequests(Array.isArray(data) ? data : [])
     } catch (err) {
-      toast.error('Tatizo la kupakia coolbox')
+      toast.error(copy.loadCoolboxError)
     }
   }
 
   const openCoolBoxForm = () => {
     if (eligibleCatches.length === 0) {
-      toast.error('Pakia samaki waliothibitishwa na waliopo sokoni kwanza kabla ya kuomba coolbox.')
+      toast.error(copy.needEligibleCatch)
       return
     }
 
@@ -258,7 +299,7 @@ const FisherDashboard = () => {
       })
 
       if (res.ok) {
-        toast.success('Ombi la sanduku la baridi limewasilishwa!')
+        toast.success(copy.coolboxRequested)
         setShowCoolBoxForm(false)
         setCoolBoxData({
           catch_id: '',
@@ -270,10 +311,10 @@ const FisherDashboard = () => {
         void fetchCatches()
       } else {
         const data = await res.json().catch(() => null)
-        toast.error(data?.detail || data?.non_field_errors?.[0] || 'Tatizo la ombi la sanduku')
+        toast.error(data?.detail || data?.non_field_errors?.[0] || copy.coolboxRequestError)
       }
     } catch (err) {
-      toast.error('Tatizo la ombi la sanduku')
+      toast.error(copy.coolboxRequestError)
     } finally {
       setLoading(false)
     }
@@ -289,6 +330,7 @@ const FisherDashboard = () => {
           <div className="flex items-center justify-between mb-6">
             <div>
               <p className="text-gray-600 text-sm uppercase tracking-wide">Mapato Leo</p>
+              <p className="text-gray-600 text-sm uppercase tracking-wide">{copy.earningsToday}</p>
               <p className="text-4xl font-bold text-ocean-600">
                 TZS {earnings.toLocaleString()}
               </p>
@@ -298,15 +340,15 @@ const FisherDashboard = () => {
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
               <p className="font-semibold text-lg">{catches.length}</p>
-              <p className="text-sm text-gray-600">Uvuvi</p>
+              <p className="text-sm text-gray-600">{copy.catches}</p>
             </div>
             <div>
               <p className="font-semibold text-lg">{auctions.filter((auction) => auction.status === 'sold').length}</p>
-              <p className="text-sm text-gray-600">Minada Sold</p>
+              <p className="text-sm text-gray-600">{copy.auctionsSold}</p>
             </div>
             <div>
               <p className="font-semibold text-lg">{auctions.filter((auction) => auction.status === 'open').length}</p>
-              <p className="text-sm text-gray-600">Mnada Live</p>
+              <p className="text-sm text-gray-600">{copy.auctionLive}</p>
             </div>
           </div>
         </div>
@@ -317,7 +359,7 @@ const FisherDashboard = () => {
             className="flex w-full items-center space-x-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 p-6 text-lg font-semibold text-white shadow-xl transition-all hover:shadow-2xl"
           >
             <Plus className="w-6 h-6" />
-            <span>Pakia Uvuvi Mpya</span>
+            <span>{copy.uploadCatch}</span>
           </button>
 
           <button
@@ -325,7 +367,7 @@ const FisherDashboard = () => {
             className="flex w-full items-center space-x-3 rounded-2xl bg-gradient-to-r from-ocean-600 to-cyan-600 p-6 text-lg font-semibold text-white shadow-xl transition-all hover:shadow-2xl"
           >
             <Gavel className="w-6 h-6" />
-            <span>Anzisha Mnada</span>
+            <span>{copy.startAuction}</span>
           </button>
 
           <button
@@ -333,7 +375,7 @@ const FisherDashboard = () => {
             className="flex w-full items-center space-x-3 rounded-2xl bg-gradient-to-r from-yellow-500 to-orange-600 p-6 text-lg font-semibold text-white shadow-xl transition-all hover:shadow-2xl"
           >
             <AlertCircle className="w-6 h-6" />
-            <span>Omba Sanduku la Baridi</span>
+            <span>{copy.requestCoolbox}</span>
           </button>
         </div>
       </div>

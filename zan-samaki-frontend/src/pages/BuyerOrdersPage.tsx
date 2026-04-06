@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Clock3, MapPin, Package, ReceiptText } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useLanguage } from '@/context/LanguageContext'
 
 interface BuyerOrder {
   id: number
@@ -39,13 +40,91 @@ interface PaymentSimulation {
 
 type PaymentMethod = 'tigo_pesa' | 'mpesa'
 
-const statusLabel: Record<BuyerOrder['status'], string> = {
-  pending: 'Inasubiri',
-  paid: 'Imelipwa',
-  delivered: 'Imekamilika',
-}
-
 const BuyerOrdersPage = () => {
+  const { language } = useLanguage()
+  const copy = language === 'en'
+    ? {
+      statuses: { pending: 'Pending', paid: 'Paid', delivered: 'Delivered' },
+      loadError: 'Unable to load orders',
+      completedAt: 'Completed',
+      fisher: 'Fisher',
+      fish: 'Fish',
+      type: 'Type',
+      location: 'Location',
+      payment: 'Payment',
+      quantity: 'Quantity',
+      pricePerKg: 'Price per kg',
+      total: 'Total',
+      printError: 'Unable to open print window',
+      previewError: 'Payment simulation failed',
+      previewReady: 'Payment simulation is ready.',
+      completeError: 'Unable to complete payment',
+      completeSuccess: 'Auction order payment completed.',
+      buyerCenter: 'Buyer Center',
+      title: 'My Orders',
+      subtitle: 'Track your orders, delivery status, and expected arrival time easily.',
+      totalOrders: 'Total orders',
+      loading: 'Loading orders...',
+      empty: 'You do not have any orders yet.',
+      detailsFishFallback: 'Fish',
+      detailsLocationFallback: 'Zanzibar',
+      payNow: 'Pay Now',
+      viewDetails: 'View Details',
+      orderPayment: 'Order Payment',
+      choosePayment: 'Choose payment method',
+      paymentPreview: 'Payment Simulation',
+      simulating: 'Simulating...',
+      simulate: 'Simulate Payment',
+      finishing: 'Finishing...',
+      finishPayment: 'Complete Payment',
+      alreadyDone: 'This order has already been paid or completed.',
+      close: 'Close',
+      invoice: 'Invoice',
+      downloadInvoice: 'Download Invoice',
+      printInvoice: 'Print Invoice',
+      closeInvoice: 'Close Invoice'
+    }
+    : {
+      statuses: { pending: 'Inasubiri', paid: 'Imelipwa', delivered: 'Imekamilika' },
+      loadError: 'Tatizo la kupakia orders',
+      completedAt: 'Imekamilika',
+      fisher: 'Mvuvi',
+      fish: 'Samaki',
+      type: 'Aina',
+      location: 'Mahali',
+      payment: 'Malipo',
+      quantity: 'Kiasi',
+      pricePerKg: 'Bei kwa kilo',
+      total: 'Jumla',
+      printError: 'Imeshindikana kufungua print window',
+      previewError: 'Simulation ya malipo imeshindikana',
+      previewReady: 'Simulation ya malipo iko tayari.',
+      completeError: 'Imeshindikana kukamilisha malipo',
+      completeSuccess: 'Malipo yamekamilika kwa order ya mnada.',
+      buyerCenter: 'Buyer Center',
+      title: 'Orders Zangu',
+      subtitle: 'Fuatilia oda zako, hali ya usafirishaji, na muda wa kufika kwa urahisi.',
+      totalOrders: 'Jumla ya orders',
+      loading: 'Inapakia orders...',
+      empty: 'Bado huna order yoyote kwenye database.',
+      detailsFishFallback: 'Samaki',
+      detailsLocationFallback: 'Zanzibar',
+      payNow: 'Lipa Sasa',
+      viewDetails: 'Angalia Maelezo',
+      orderPayment: 'Order Payment',
+      choosePayment: 'Chagua njia ya malipo',
+      paymentPreview: 'Simulation ya Malipo',
+      simulating: 'Inasimulate...',
+      simulate: 'Simulate Payment',
+      finishing: 'Inakamilisha...',
+      finishPayment: 'Kamilisha Malipo',
+      alreadyDone: 'Order hii tayari imelipwa au imekamilika.',
+      close: 'Funga',
+      invoice: 'Invoice',
+      downloadInvoice: 'Download Invoice',
+      printInvoice: 'Print Invoice',
+      closeInvoice: 'Funga Invoice'
+    }
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const [orders, setOrders] = useState<BuyerOrder[]>([])
@@ -83,7 +162,7 @@ const BuyerOrdersPage = () => {
         }
       }
     } catch (error) {
-      toast.error('Tatizo la kupakia orders')
+      toast.error(copy.loadError)
       setOrders([])
     } finally {
       setLoading(false)
@@ -119,19 +198,19 @@ const BuyerOrdersPage = () => {
       </head>
       <body>
         <h1>${currentInvoice.invoice_number}</h1>
-        <p class="muted">Imekamilika: ${new Date(currentInvoice.issued_at).toLocaleString()}</p>
+        <p class="muted">${copy.completedAt}: ${new Date(currentInvoice.issued_at).toLocaleString()}</p>
         <div class="card">
           <div class="row"><span class="label">Buyer</span><span class="value">${currentInvoice.buyer_name}</span></div>
-          <div class="row"><span class="label">Mvuvi</span><span class="value">${currentInvoice.fisher_name}</span></div>
-          <div class="row"><span class="label">Samaki</span><span class="value">${currentInvoice.fish_title}</span></div>
-          <div class="row"><span class="label">Aina</span><span class="value">${currentInvoice.fish_type}</span></div>
-          <div class="row"><span class="label">Mahali</span><span class="value">${currentInvoice.location}</span></div>
-          <div class="row"><span class="label">Malipo</span><span class="value">${currentInvoice.payment_method}</span></div>
+          <div class="row"><span class="label">${copy.fisher}</span><span class="value">${currentInvoice.fisher_name}</span></div>
+          <div class="row"><span class="label">${copy.fish}</span><span class="value">${currentInvoice.fish_title}</span></div>
+          <div class="row"><span class="label">${copy.type}</span><span class="value">${currentInvoice.fish_type}</span></div>
+          <div class="row"><span class="label">${copy.location}</span><span class="value">${currentInvoice.location}</span></div>
+          <div class="row"><span class="label">${copy.payment}</span><span class="value">${currentInvoice.payment_method}</span></div>
         </div>
         <div class="card">
-          <div class="row"><span class="label">Kiasi</span><span class="value">${currentInvoice.quantity} kg</span></div>
-          <div class="row"><span class="label">Bei kwa kilo</span><span class="value">TZS ${Number(currentInvoice.price_per_kg).toLocaleString()}</span></div>
-          <div class="row"><span class="label total">Jumla</span><span class="value total">TZS ${Number(currentInvoice.total_price).toLocaleString()}</span></div>
+          <div class="row"><span class="label">${copy.quantity}</span><span class="value">${currentInvoice.quantity} kg</span></div>
+          <div class="row"><span class="label">${copy.pricePerKg}</span><span class="value">TZS ${Number(currentInvoice.price_per_kg).toLocaleString()}</span></div>
+          <div class="row"><span class="label total">${copy.total}</span><span class="value total">TZS ${Number(currentInvoice.total_price).toLocaleString()}</span></div>
         </div>
       </body>
     </html>
@@ -140,7 +219,7 @@ const BuyerOrdersPage = () => {
   const printInvoice = (currentInvoice: PaymentInvoice) => {
     const printWindow = window.open('', '_blank', 'width=900,height=700')
     if (!printWindow) {
-      toast.error('Imeshindikana kufungua print window')
+      toast.error(copy.printError)
       return
     }
 
@@ -207,15 +286,15 @@ const BuyerOrdersPage = () => {
       const data = await res.json().catch(() => null)
 
       if (!res.ok) {
-        toast.error(data?.detail || 'Simulation ya malipo imeshindikana')
+        toast.error(data?.detail || copy.previewError)
         return
       }
 
       setPaymentPreview(data?.simulation ?? null)
       setPreviewInvoice(data?.invoice ?? null)
-      toast.success('Simulation ya malipo iko tayari.')
+      toast.success(copy.previewReady)
     } catch {
-      toast.error('Simulation ya malipo imeshindikana')
+      toast.error(copy.previewError)
     } finally {
       setPreviewingPayment(false)
     }
@@ -237,16 +316,16 @@ const BuyerOrdersPage = () => {
       const data = await res.json().catch(() => null)
 
       if (!res.ok) {
-        toast.error(data?.detail || 'Imeshindikana kukamilisha malipo')
+        toast.error(data?.detail || copy.completeError)
         return
       }
 
       setFinalInvoice(data?.invoice ?? null)
-      toast.success('Malipo yamekamilika kwa order ya mnada.')
+      toast.success(copy.completeSuccess)
       await fetchOrders()
       closeOrderModal()
     } catch {
-      toast.error('Imeshindikana kukamilisha malipo')
+      toast.error(copy.completeError)
     } finally {
       setSubmittingPayment(false)
     }
@@ -256,29 +335,27 @@ const BuyerOrdersPage = () => {
     <div className="max-w-7xl mx-auto px-4 py-12">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
         <div>
-          <p className="text-ocean-600 font-semibold mb-2">Buyer Center</p>
+          <p className="text-ocean-600 font-semibold mb-2">{copy.buyerCenter}</p>
           <h1 className="text-4xl font-bold flex items-center gap-3">
             <Package className="w-10 h-10 text-ocean-600" />
-            <span>Orders Zangu</span>
+            <span>{copy.title}</span>
           </h1>
-          <p className="text-gray-600 mt-3 max-w-2xl">
-            Fuatilia oda zako, hali ya usafirishaji, na muda wa kufika kwa urahisi.
-          </p>
+          <p className="text-gray-600 mt-3 max-w-2xl">{copy.subtitle}</p>
         </div>
 
         <div className="bg-white/70 backdrop-blur-sm rounded-2xl border border-white/50 shadow-lg px-6 py-4">
-          <p className="text-sm text-gray-500">Jumla ya orders</p>
+          <p className="text-sm text-gray-500">{copy.totalOrders}</p>
           <p className="text-3xl font-bold text-emerald-600">{orders.length}</p>
         </div>
       </div>
 
       {loading ? (
         <div className="rounded-2xl border border-white/50 bg-white/70 p-8 text-center text-gray-600 shadow-lg">
-          Inapakia orders...
+          {copy.loading}
         </div>
       ) : orders.length === 0 ? (
         <div className="rounded-2xl border border-white/50 bg-white/70 p-8 text-center text-gray-600 shadow-lg">
-          Bado huna order yoyote kwenye database.
+          {copy.empty}
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-3">
@@ -294,10 +371,10 @@ const BuyerOrdersPage = () => {
                     ORD-{order.id}
                   </span>
                   <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-sm font-semibold">
-                    {statusLabel[order.status] || order.status}
+                    {copy.statuses[order.status] || order.status}
                   </span>
                 </div>
-                <h2 className="text-2xl font-bold mb-2">{order.catch?.title || 'Samaki'}</h2>
+                <h2 className="text-2xl font-bold mb-2">{order.catch?.title || copy.detailsFishFallback}</h2>
                 <div className="flex flex-wrap gap-4 text-gray-600">
                   <span className="flex items-center gap-2">
                     <ReceiptText className="w-4 h-4" />
@@ -305,7 +382,7 @@ const BuyerOrdersPage = () => {
                   </span>
                   <span className="flex items-center gap-2">
                     <MapPin className="w-4 h-4" />
-                    {order.catch?.location || 'Zanzibar'}
+                    {order.catch?.location || copy.detailsLocationFallback}
                   </span>
                   <span className="flex items-center gap-2">
                     <Clock3 className="w-4 h-4" />
@@ -322,7 +399,7 @@ const BuyerOrdersPage = () => {
                 onClick={() => openOrderModal(order)}
                 className="px-6 py-3 rounded-xl bg-ocean-600 text-white font-semibold hover:bg-ocean-700 transition-colors"
               >
-                {order.status === 'pending' ? 'Lipa Sasa' : 'Angalia Maelezo'}
+                {order.status === 'pending' ? copy.payNow : copy.viewDetails}
               </button>
             </div>
           </div>
@@ -336,28 +413,29 @@ const BuyerOrdersPage = () => {
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.2em] text-ocean-600">Order Payment</p>
+                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-ocean-600">{copy.orderPayment}</p>
                 <h2 className="mt-2 text-3xl font-bold text-slate-900">ORD-{selectedOrder.id}</h2>
               </div>
               <div className="rounded-full bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
-                {statusLabel[selectedOrder.status]}
+                {copy.statuses[selectedOrder.status]}
               </div>
             </div>
 
             <div className="grid gap-4 rounded-2xl bg-slate-50 p-5 md:grid-cols-2">
               <div>
-                <p className="text-sm text-slate-500">Samaki</p>
-                <p className="font-semibold text-slate-900">{selectedOrder.catch?.title || 'Samaki'}</p>
+                <p className="text-sm text-slate-500">{copy.fish}</p>
+                <p className="font-semibold text-slate-900">{selectedOrder.catch?.title || copy.detailsFishFallback}</p>
               </div>
               <div>
-                <p className="text-sm text-slate-500">Mahali</p>
-                <p className="font-semibold text-slate-900">{selectedOrder.catch?.location || 'Zanzibar'}</p>
+                <p className="text-sm text-slate-500">{copy.location}</p>
+                <p className="font-semibold text-slate-900">{selectedOrder.catch?.location || copy.detailsLocationFallback}</p>
               </div>
               <div>
-                <p className="text-sm text-slate-500">Kiasi</p>
+                <p className="text-sm text-slate-500">{copy.quantity}</p>
                 <p className="font-semibold text-slate-900">{selectedOrder.quantity} kg</p>
               </div>
               <div>
-                <p className="text-sm text-slate-500">Jumla</p>
+                <p className="text-sm text-slate-500">{copy.total}</p>
                 <p className="font-semibold text-slate-900">TZS {Number(selectedOrder.total_price).toLocaleString()}</p>
               </div>
             </div>
@@ -365,7 +443,7 @@ const BuyerOrdersPage = () => {
             {selectedOrder.status === 'pending' && (
               <>
                 <div className="mt-6 rounded-xl bg-slate-50 p-4">
-                  <label className="mb-2 block text-sm font-semibold text-gray-700">Chagua njia ya malipo</label>
+                  <label className="mb-2 block text-sm font-semibold text-gray-700">{copy.choosePayment}</label>
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       type="button"
@@ -394,11 +472,11 @@ const BuyerOrdersPage = () => {
 
                 {previewInvoice && paymentPreview && (
                   <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-4">
-                    <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">Simulation ya Malipo</p>
+                    <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">{copy.paymentPreview}</p>
                     <p className="mt-2 text-lg font-bold text-slate-900">{previewInvoice.invoice_number}</p>
                     <div className="mt-3 space-y-2 text-sm text-slate-700">
-                      <p>Jumla: <span className="font-semibold">TZS {Number(previewInvoice.total_price).toLocaleString()}</span></p>
-                      <p>Malipo: <span className="font-semibold">{previewInvoice.payment_method}</span></p>
+                      <p>{copy.total}: <span className="font-semibold">TZS {Number(previewInvoice.total_price).toLocaleString()}</span></p>
+                      <p>{copy.payment}: <span className="font-semibold">{previewInvoice.payment_method}</span></p>
                       <p className="text-blue-700">{paymentPreview.message}</p>
                     </div>
                   </div>
@@ -411,7 +489,7 @@ const BuyerOrdersPage = () => {
                     disabled={previewingPayment || submittingPayment}
                     className="flex-1 rounded-xl border border-emerald-200 bg-white px-6 py-3 font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-60"
                   >
-                    {previewingPayment ? 'Inasimulate...' : 'Simulate Payment'}
+                    {previewingPayment ? copy.simulating : copy.simulate}
                   </button>
                   <button
                     type="button"
@@ -419,7 +497,7 @@ const BuyerOrdersPage = () => {
                     disabled={!paymentPreview || submittingPayment}
                     className="flex-1 rounded-xl bg-ocean-600 px-6 py-3 font-semibold text-white hover:bg-ocean-700 disabled:opacity-60"
                   >
-                    {submittingPayment ? 'Inakamilisha...' : 'Kamilisha Malipo'}
+                    {submittingPayment ? copy.finishing : copy.finishPayment}
                   </button>
                 </div>
               </>
@@ -427,7 +505,7 @@ const BuyerOrdersPage = () => {
 
             {selectedOrder.status !== 'pending' && (
               <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-                Order hii tayari imelipwa au imekamilika.
+                {copy.alreadyDone}
               </div>
             )}
 
@@ -436,7 +514,7 @@ const BuyerOrdersPage = () => {
               onClick={closeOrderModal}
               className="mt-6 w-full rounded-xl border border-slate-300 px-6 py-3 font-semibold text-slate-700 hover:bg-slate-50"
             >
-              Funga
+              {copy.close}
             </button>
           </div>
         </div>
@@ -445,13 +523,13 @@ const BuyerOrdersPage = () => {
       {finalInvoice && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
           <div className="w-full max-w-xl rounded-2xl bg-white p-8 shadow-2xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-ocean-600">Invoice</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-ocean-600">{copy.invoice}</p>
             <h2 className="mt-2 text-3xl font-bold text-slate-900">{finalInvoice.invoice_number}</h2>
             <div className="mt-6 space-y-3 rounded-2xl bg-slate-50 p-5">
               <p>Buyer: <span className="font-semibold">{finalInvoice.buyer_name}</span></p>
-              <p>Samaki: <span className="font-semibold">{finalInvoice.fish_title}</span></p>
-              <p>Malipo: <span className="font-semibold">{finalInvoice.payment_method}</span></p>
-              <p>Jumla: <span className="font-semibold">TZS {Number(finalInvoice.total_price).toLocaleString()}</span></p>
+              <p>{copy.fish}: <span className="font-semibold">{finalInvoice.fish_title}</span></p>
+              <p>{copy.payment}: <span className="font-semibold">{finalInvoice.payment_method}</span></p>
+              <p>{copy.total}: <span className="font-semibold">TZS {Number(finalInvoice.total_price).toLocaleString()}</span></p>
             </div>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <button
@@ -459,14 +537,14 @@ const BuyerOrdersPage = () => {
                 onClick={() => downloadInvoice(finalInvoice)}
                 className="flex-1 rounded-xl border border-emerald-200 px-6 py-3 font-semibold text-emerald-700 hover:bg-emerald-50"
               >
-                Download Invoice
+                {copy.downloadInvoice}
               </button>
               <button
                 type="button"
                 onClick={() => printInvoice(finalInvoice)}
                 className="flex-1 rounded-xl border border-ocean-200 px-6 py-3 font-semibold text-ocean-700 hover:bg-ocean-50"
               >
-                Print Invoice
+                {copy.printInvoice}
               </button>
               <button
                 type="button"
@@ -476,7 +554,7 @@ const BuyerOrdersPage = () => {
                 }}
                 className="flex-1 rounded-xl bg-ocean-600 px-6 py-3 font-semibold text-white hover:bg-ocean-700"
               >
-                Funga Invoice
+                {copy.closeInvoice}
               </button>
             </div>
           </div>
