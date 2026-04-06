@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Menu, Package, Radio, Search, ShoppingCart } from 'lucide-react'
+import { Menu, Package, Radio, Search, ShoppingCart, X } from 'lucide-react'
 import BrandLogo from '@/components/BrandLogo'
 import UserMenu from '@/components/UserMenu'
 import { useLanguage } from '@/context/LanguageContext'
@@ -14,6 +14,7 @@ const BuyerNavbar = ({ username, onLogout }: BuyerNavbarProps) => {
   const [searchTerm, setSearchTerm] = useState('')
   const [orderCount, setOrderCount] = useState(0)
   const [liveCount, setLiveCount] = useState(0)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const navigate = useNavigate()
   const { language } = useLanguage()
   const copy = language === 'en'
@@ -22,14 +23,16 @@ const BuyerNavbar = ({ username, onLogout }: BuyerNavbarProps) => {
       market: 'Market',
       orders: 'Orders',
       live: 'Live',
-      openMenu: 'Open menu'
+      openMenu: 'Open menu',
+      closeMenu: 'Close menu'
     }
     : {
       searchPlaceholder: 'Tafuta samaki...',
       market: 'Soko',
       orders: 'Order',
       live: 'Live',
-      openMenu: 'Fungua menu'
+      openMenu: 'Fungua menu',
+      closeMenu: 'Funga menu'
     }
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     `flex items-center space-x-2 rounded-lg px-3 py-2 font-medium transition-all ${
@@ -47,6 +50,7 @@ const BuyerNavbar = ({ username, onLogout }: BuyerNavbarProps) => {
     }
 
     navigate(`/buyer${params.toString() ? `?${params.toString()}` : ''}`)
+    setMobileMenuOpen(false)
   }
 
   useEffect(() => {
@@ -168,11 +172,62 @@ const BuyerNavbar = ({ username, onLogout }: BuyerNavbarProps) => {
 
           <div className="flex items-center gap-2 md:hidden">
             <UserMenu username={username} onLogout={onLogout} compact />
-            <button className="p-2" aria-label={copy.openMenu}>
-              <Menu className="w-6 h-6" />
+            <button
+              className="p-2"
+              aria-label={mobileMenuOpen ? copy.closeMenu : copy.openMenu}
+              onClick={() => setMobileMenuOpen((current) => !current)}
+            >
+              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
         </div>
+
+        {mobileMenuOpen && (
+          <div className="border-t border-ocean-100 py-4 md:hidden">
+            <div className="space-y-3">
+              <form onSubmit={handleSearch} className="relative">
+                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="search"
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder={copy.searchPlaceholder}
+                  className="w-full rounded-xl border border-ocean-100 bg-white px-10 py-3 text-sm text-gray-700 shadow-sm outline-none transition-all focus:border-ocean-400 focus:ring-2 focus:ring-ocean-200"
+                />
+              </form>
+
+              <NavLink
+                to="/buyer"
+                end
+                onClick={() => setMobileMenuOpen(false)}
+                className={navLinkClass}
+              >
+                <ShoppingCart className="w-5 h-5" />
+                <span>{copy.market}</span>
+              </NavLink>
+
+              <NavLink
+                to="/buyer/orders"
+                onClick={() => setMobileMenuOpen(false)}
+                className={navLinkClass}
+              >
+                <Package className="w-5 h-5" />
+                <span>{copy.orders}</span>
+                {renderBubble(orderCount)}
+              </NavLink>
+
+              <NavLink
+                to="/buyer/live"
+                onClick={() => setMobileMenuOpen(false)}
+                className={navLinkClass}
+              >
+                <Radio className="w-5 h-5" />
+                <span>{copy.live}</span>
+                {renderBubble(liveCount)}
+              </NavLink>
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   )

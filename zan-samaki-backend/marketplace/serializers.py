@@ -12,7 +12,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'password', 'role', 'phone', 'location')
+        fields = ('id', 'username', 'first_name', 'last_name', 'email', 'password', 'role', 'phone', 'location')
 
     def validate_email(self, value):
         email = value.strip().lower()
@@ -29,6 +29,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         user = User.objects.create_user(
             username=validated_data['username'].strip(),
+            first_name=validated_data.get('first_name', '').strip(),
+            last_name=validated_data.get('last_name', '').strip(),
             email=validated_data['email'].strip().lower(),
             password=validated_data['password'],
             role=validated_data.get('role', 'buyer'),
@@ -41,7 +43,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'role', 'phone', 'location')
+        fields = ('id', 'username', 'first_name', 'last_name', 'email', 'role', 'phone', 'location')
 
 class FishCatchSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)

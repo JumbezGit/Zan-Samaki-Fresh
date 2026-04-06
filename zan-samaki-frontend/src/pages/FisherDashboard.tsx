@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { AlertCircle, Clock3, DollarSign, Fish, Gavel, MapPin, Plus, Upload } from 'lucide-react'
+import { AlertCircle, Clock3, DollarSign, Fish, Gavel, MapPin, Plus, Settings, Upload, X } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useLanguage } from '@/context/LanguageContext'
 
@@ -40,7 +41,14 @@ interface Auction {
   }
 }
 
-const FisherDashboard = () => {
+type FisherSection = 'catches' | 'live' | 'coolbox'
+
+interface FisherDashboardProps {
+  isSidebarOpen: boolean
+  onCloseSidebar: () => void
+}
+
+const FisherDashboard = ({ isSidebarOpen, onCloseSidebar }: FisherDashboardProps) => {
   const { language } = useLanguage()
   const copy = language === 'en'
     ? {
@@ -60,7 +68,13 @@ const FisherDashboard = () => {
       auctionLive: 'Live Auctions',
       uploadCatch: 'Upload New Catch',
       startAuction: 'Start Auction',
-      requestCoolbox: 'Request CoolBox'
+      requestCoolbox: 'Request CoolBox',
+      sectionsTitle: 'Fisher Management',
+      catchesSection: 'Catch Management',
+      liveSection: 'Live Management',
+      coolboxSection: 'CoolBox',
+      closeMenu: 'Close management menu',
+      settings: 'Settings'
     }
     : {
       loadCatchError: 'Tatizo la kupakia uvuvi',
@@ -79,12 +93,19 @@ const FisherDashboard = () => {
       auctionLive: 'Mnada Live',
       uploadCatch: 'Pakia Uvuvi Mpya',
       startAuction: 'Anzisha Mnada',
-      requestCoolbox: 'Omba Sanduku la Baridi'
+      requestCoolbox: 'Omba Sanduku la Baridi',
+      sectionsTitle: 'Usimamizi wa Mvuvi',
+      catchesSection: 'Usimamizi wa Uvuvi',
+      liveSection: 'Usimamizi wa Live',
+      coolboxSection: 'CoolBox',
+      closeMenu: 'Funga menu ya usimamizi',
+      settings: 'Mipangilio'
     }
   const COOLBOX_LOCATIONS = ['Malindi', 'Mkokotoni', 'Chwaka', 'Paje']
   const [catches, setCatches] = useState<Catch[]>([])
   const [auctions, setAuctions] = useState<Auction[]>([])
   const [coolBoxRequests, setCoolBoxRequests] = useState<CoolBoxRequest[]>([])
+  const [activeSection, setActiveSection] = useState<FisherSection>('catches')
   const [showForm, setShowForm] = useState(false)
   const [showAuctionForm, setShowAuctionForm] = useState(false)
   const [showCoolBoxForm, setShowCoolBoxForm] = useState(false)
@@ -322,106 +343,76 @@ const FisherDashboard = () => {
 
   const eligibleCatches = catches.filter((catchItem) => catchItem.status === 'available' && catchItem.is_approved)
   const activeCoolBoxRequests = coolBoxRequests.filter((request) => request.active_catch)
+  const sections: Array<{ id: FisherSection; label: string; icon: typeof Fish }> = [
+    { id: 'catches', label: copy.catchesSection, icon: Fish },
+    { id: 'live', label: copy.liveSection, icon: Gavel },
+    { id: 'coolbox', label: copy.coolboxSection, icon: AlertCircle }
+  ]
 
-  return (
-    <div className="max-w-7xl mx-auto px-4 py-12">
-      <div className="grid lg:grid-cols-2 gap-12">
-        <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-white/50">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <p className="text-gray-600 text-sm uppercase tracking-wide">Mapato Leo</p>
-              <p className="text-gray-600 text-sm uppercase tracking-wide">{copy.earningsToday}</p>
-              <p className="text-4xl font-bold text-ocean-600">
-                TZS {earnings.toLocaleString()}
-              </p>
-            </div>
-            <DollarSign className="w-16 h-16 text-ocean-600/20" />
-          </div>
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <p className="font-semibold text-lg">{catches.length}</p>
-              <p className="text-sm text-gray-600">{copy.catches}</p>
-            </div>
-            <div>
-              <p className="font-semibold text-lg">{auctions.filter((auction) => auction.status === 'sold').length}</p>
-              <p className="text-sm text-gray-600">{copy.auctionsSold}</p>
-            </div>
-            <div>
-              <p className="font-semibold text-lg">{auctions.filter((auction) => auction.status === 'open').length}</p>
-              <p className="text-sm text-gray-600">{copy.auctionLive}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <button
-            onClick={() => setShowForm(true)}
-            className="flex w-full items-center space-x-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 p-6 text-lg font-semibold text-white shadow-xl transition-all hover:shadow-2xl"
-          >
-            <Plus className="w-6 h-6" />
-            <span>{copy.uploadCatch}</span>
-          </button>
-
-          <button
-            onClick={() => setShowAuctionForm(true)}
-            className="flex w-full items-center space-x-3 rounded-2xl bg-gradient-to-r from-ocean-600 to-cyan-600 p-6 text-lg font-semibold text-white shadow-xl transition-all hover:shadow-2xl"
-          >
-            <Gavel className="w-6 h-6" />
-            <span>{copy.startAuction}</span>
-          </button>
-
-          <button
-            onClick={openCoolBoxForm}
-            className="flex w-full items-center space-x-3 rounded-2xl bg-gradient-to-r from-yellow-500 to-orange-600 p-6 text-lg font-semibold text-white shadow-xl transition-all hover:shadow-2xl"
-          >
-            <AlertCircle className="w-6 h-6" />
-            <span>{copy.requestCoolbox}</span>
-          </button>
-        </div>
+  const renderCatchSection = () => (
+    <>
+      <div className="space-y-4">
+        <button
+          onClick={() => setShowForm(true)}
+          className="flex w-full items-center space-x-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 p-6 text-lg font-semibold text-white shadow-xl transition-all hover:shadow-2xl"
+        >
+          <Plus className="w-6 h-6" />
+          <span>{copy.uploadCatch}</span>
+        </button>
       </div>
 
       <div className="mt-12">
         <h2 className="mb-8 flex items-center space-x-3 text-3xl font-bold">
-          <AlertCircle className="w-10 h-10" />
-          <span>Samaki Waliohifadhiwa Kwenye CoolBox</span>
+          <Fish className="w-10 h-10" />
+          <span>Uvuvi Wako Wa Hivi Karibuni</span>
         </h2>
-        {activeCoolBoxRequests.length === 0 ? (
-          <div className="rounded-2xl border border-white/50 bg-white/70 p-8 text-center text-gray-600 shadow-lg">
-            Hakuna samaki walio kwenye coolbox kwa sasa. Samaki wakiuzwa, kuisha, au kuondolewa hawataonekana hapa tena.
-          </div>
-        ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {activeCoolBoxRequests.map((request) => {
-              const activeCatch = request.active_catch
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {catches.slice(0, 6).map((catchItem) => (
+            <div key={catchItem.id} className="group rounded-2xl border border-white/50 bg-white/70 p-6 shadow-lg transition-all hover:shadow-xl">
+              <div className="mb-4 flex h-48 items-center justify-center rounded-xl bg-gradient-to-br from-blue-400 to-ocean-500">
+                <Fish className="w-24 h-24 text-white/30" />
+              </div>
+              <h3 className="mb-2 text-xl font-bold">{catchItem.title}</h3>
+              <p className="mb-2 font-semibold text-ocean-600">{catchItem.fish_type}</p>
+              <div className="mb-4 flex items-center justify-between">
+                <span className="text-2xl font-bold text-emerald-600">{catchItem.quantity}kg</span>
+                <span className="text-lg font-bold text-gray-700">
+                  TZS {(catchItem.price_per_kg * catchItem.quantity).toLocaleString()}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  catchItem.is_approved ? 'bg-emerald-100 text-emerald-800' : 'bg-yellow-100 text-yellow-800'
+                }`}>
+                  {catchItem.is_approved ? 'Imeruhusiwa' : 'Inasubiri'}
+                </span>
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  catchItem.status === 'sold'
+                    ? 'bg-green-100 text-green-800'
+                    : catchItem.status === 'reserved'
+                      ? 'bg-blue-100 text-blue-800'
+                      : 'bg-gray-100 text-gray-800'
+                }`}>
+                  {catchItem.status === 'sold' ? 'Imeuzwa' : catchItem.status === 'reserved' ? 'Kwenye Mnada' : 'Inapatikana'}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  )
 
-              if (!activeCatch) {
-                return null
-              }
-
-              return (
-                <div key={request.id} className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-lg">
-                  <div className="mb-4 flex items-start justify-between gap-3">
-                    <div>
-                      <h3 className="text-xl font-bold">{activeCatch.title}</h3>
-                      <p className="mt-1 text-sm text-gray-500">{activeCatch.location}</p>
-                    </div>
-                    <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-800">
-                      {request.status}
-                    </span>
-                  </div>
-                  <div className="space-y-2 text-sm text-gray-600">
-                    <p>Aina ya samaki: <span className="font-semibold">{activeCatch.fish_type}</span></p>
-                    <p>Coolbox location: <span className="font-semibold">{request.location}</span></p>
-                    <p>Kilo saved in coolbox: <span className="font-semibold">{request.quantity_kg} kg</span></p>
-                    <p>Kilo zilizopo: <span className="font-semibold">{activeCatch.quantity} kg</span></p>
-                    <p>Muda wa coolbox: <span className="font-semibold">{request.days} siku</span></p>
-                    <p>Gharama: <span className="font-semibold">TZS {Number(request.price).toLocaleString()}</span></p>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
+  const renderLiveSection = () => (
+    <>
+      <div className="space-y-4">
+        <button
+          onClick={() => setShowAuctionForm(true)}
+          className="flex w-full items-center space-x-3 rounded-2xl bg-gradient-to-r from-ocean-600 to-cyan-600 p-6 text-lg font-semibold text-white shadow-xl transition-all hover:shadow-2xl"
+        >
+          <Gavel className="w-6 h-6" />
+          <span>{copy.startAuction}</span>
+        </button>
       </div>
 
       <div className="mt-12">
@@ -502,45 +493,186 @@ const FisherDashboard = () => {
           ))}
         </div>
       </div>
+    </>
+  )
+
+  const renderCoolBoxSection = () => (
+    <>
+      <div className="space-y-4">
+        <button
+          onClick={openCoolBoxForm}
+          className="flex w-full items-center space-x-3 rounded-2xl bg-gradient-to-r from-yellow-500 to-orange-600 p-6 text-lg font-semibold text-white shadow-xl transition-all hover:shadow-2xl"
+        >
+          <AlertCircle className="w-6 h-6" />
+          <span>{copy.requestCoolbox}</span>
+        </button>
+      </div>
 
       <div className="mt-12">
         <h2 className="mb-8 flex items-center space-x-3 text-3xl font-bold">
-          <Fish className="w-10 h-10" />
-          <span>Uvuvi Wako Wa Hivi Karibuni</span>
+          <AlertCircle className="w-10 h-10" />
+          <span>Samaki Waliohifadhiwa Kwenye CoolBox</span>
         </h2>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {catches.slice(0, 6).map((catchItem) => (
-            <div key={catchItem.id} className="group rounded-2xl border border-white/50 bg-white/70 p-6 shadow-lg transition-all hover:shadow-xl">
-              <div className="mb-4 flex h-48 items-center justify-center rounded-xl bg-gradient-to-br from-blue-400 to-ocean-500">
-                <Fish className="w-24 h-24 text-white/30" />
-              </div>
-              <h3 className="mb-2 text-xl font-bold">{catchItem.title}</h3>
-              <p className="mb-2 font-semibold text-ocean-600">{catchItem.fish_type}</p>
-              <div className="mb-4 flex items-center justify-between">
-                <span className="text-2xl font-bold text-emerald-600">{catchItem.quantity}kg</span>
-                <span className="text-lg font-bold text-gray-700">
-                  TZS {(catchItem.price_per_kg * catchItem.quantity).toLocaleString()}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                  catchItem.is_approved ? 'bg-emerald-100 text-emerald-800' : 'bg-yellow-100 text-yellow-800'
-                }`}>
-                  {catchItem.is_approved ? 'Imeruhusiwa' : 'Inasubiri'}
-                </span>
-                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                  catchItem.status === 'sold'
-                    ? 'bg-green-100 text-green-800'
-                    : catchItem.status === 'reserved'
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'bg-gray-100 text-gray-800'
-                }`}>
-                  {catchItem.status === 'sold' ? 'Imeuzwa' : catchItem.status === 'reserved' ? 'Kwenye Mnada' : 'Inapatikana'}
-                </span>
-              </div>
+        {activeCoolBoxRequests.length === 0 ? (
+          <div className="rounded-2xl border border-white/50 bg-white/70 p-8 text-center text-gray-600 shadow-lg">
+            Hakuna samaki walio kwenye coolbox kwa sasa. Samaki wakiuzwa, kuisha, au kuondolewa hawataonekana hapa tena.
+          </div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {activeCoolBoxRequests.map((request) => {
+              const activeCatch = request.active_catch
+
+              if (!activeCatch) {
+                return null
+              }
+
+              return (
+                <div key={request.id} className="rounded-2xl border border-white/50 bg-white/70 p-6 shadow-lg">
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-xl font-bold">{activeCatch.title}</h3>
+                      <p className="mt-1 text-sm text-gray-500">{activeCatch.location}</p>
+                    </div>
+                    <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-800">
+                      {request.status}
+                    </span>
+                  </div>
+                  <div className="space-y-2 text-sm text-gray-600">
+                    <p>Aina ya samaki: <span className="font-semibold">{activeCatch.fish_type}</span></p>
+                    <p>Coolbox location: <span className="font-semibold">{request.location}</span></p>
+                    <p>Kilo saved in coolbox: <span className="font-semibold">{request.quantity_kg} kg</span></p>
+                    <p>Kilo zilizopo: <span className="font-semibold">{activeCatch.quantity} kg</span></p>
+                    <p>Muda wa coolbox: <span className="font-semibold">{request.days} siku</span></p>
+                    <p>Gharama: <span className="font-semibold">TZS {Number(request.price).toLocaleString()}</span></p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </>
+  )
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-12">
+      {isSidebarOpen && (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-40 bg-slate-950/45 backdrop-blur-sm lg:hidden"
+            onClick={onCloseSidebar}
+            aria-label={copy.closeMenu}
+          />
+          <aside className="fixed inset-y-0 left-0 z-50 w-[280px] border-r border-slate-200 bg-slate-950 p-6 text-white shadow-2xl lg:hidden">
+            <div className="mb-6 flex items-center justify-between">
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-200">{copy.sectionsTitle}</p>
+              <button
+                type="button"
+                onClick={onCloseSidebar}
+                className="rounded-xl border border-white/10 p-2 text-slate-200 transition hover:bg-white/10"
+                aria-label={copy.closeMenu}
+              >
+                <X className="h-5 w-5" />
+              </button>
             </div>
-          ))}
+            <nav className="space-y-3">
+              {sections.map((section) => {
+                const Icon = section.icon
+                const isActive = activeSection === section.id
+                return (
+                  <button
+                    key={section.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveSection(section.id)
+                      onCloseSidebar()
+                    }}
+                    className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left font-semibold transition ${
+                      isActive ? 'bg-white text-slate-950 shadow-lg' : 'text-slate-200 hover:bg-white/10'
+                    }`}
+                  >
+                    <Icon className="h-5 w-5" />
+                    <span>{section.label}</span>
+                  </button>
+                )
+              })}
+            </nav>
+            <Link
+              to="/settings"
+              onClick={onCloseSidebar}
+              className="mt-6 flex items-center gap-3 rounded-2xl border border-white/10 px-4 py-3 font-semibold text-slate-200 transition hover:bg-white/10"
+            >
+              <Settings className="h-5 w-5" />
+              <span>{copy.settings}</span>
+            </Link>
+          </aside>
+        </>
+      )}
+
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[280px] border-r border-slate-200 bg-slate-950 p-6 text-white shadow-2xl lg:top-16 lg:block lg:h-[calc(100vh-4rem)]">
+        <p className="mb-5 text-sm font-semibold uppercase tracking-[0.2em] text-cyan-200">{copy.sectionsTitle}</p>
+        <nav className="space-y-3">
+          {sections.map((section) => {
+            const Icon = section.icon
+            const isActive = activeSection === section.id
+            return (
+              <button
+                key={section.id}
+                type="button"
+                onClick={() => setActiveSection(section.id)}
+                className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left font-semibold transition ${
+                  isActive ? 'bg-white text-slate-950 shadow-lg' : 'text-slate-200 hover:bg-white/10'
+                }`}
+              >
+                <Icon className="h-5 w-5" />
+                <span>{section.label}</span>
+              </button>
+            )
+          })}
+        </nav>
+        <Link
+          to="/settings"
+          className="mt-6 flex items-center gap-3 rounded-2xl border border-white/10 px-4 py-3 font-semibold text-slate-200 transition hover:bg-white/10"
+        >
+          <Settings className="h-5 w-5" />
+          <span>{copy.settings}</span>
+        </Link>
+      </aside>
+
+      <div className="space-y-6 lg:pl-[304px]">
+      <div className="grid lg:grid-cols-2 gap-12">
+        <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-white/50">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <p className="text-gray-600 text-sm uppercase tracking-wide">{copy.earningsToday}</p>
+              <p className="text-4xl font-bold text-ocean-600">
+                TZS {earnings.toLocaleString()}
+              </p>
+            </div>
+            <DollarSign className="w-16 h-16 text-ocean-600/20" />
+          </div>
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <p className="font-semibold text-lg">{catches.length}</p>
+              <p className="text-sm text-gray-600">{copy.catches}</p>
+            </div>
+            <div>
+              <p className="font-semibold text-lg">{auctions.filter((auction) => auction.status === 'sold').length}</p>
+              <p className="text-sm text-gray-600">{copy.auctionsSold}</p>
+            </div>
+            <div>
+              <p className="font-semibold text-lg">{auctions.filter((auction) => auction.status === 'open').length}</p>
+              <p className="text-sm text-gray-600">{copy.auctionLive}</p>
+            </div>
+          </div>
         </div>
+      </div>
+      <div className="mt-12">
+        {activeSection === 'catches' && renderCatchSection()}
+        {activeSection === 'live' && renderLiveSection()}
+        {activeSection === 'coolbox' && renderCoolBoxSection()}
+      </div>
       </div>
 
       {showForm && (

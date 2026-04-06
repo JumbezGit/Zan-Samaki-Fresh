@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Eye, EyeOff, Lock, Mail, UserPlus } from 'lucide-react'
+import { Eye, EyeOff, Lock, Mail, MapPin, Phone, UserPlus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useLanguage } from '@/context/LanguageContext'
 
@@ -22,6 +22,18 @@ const translations = {
     username: 'Username',
     usernameRequired: 'Username is required',
     usernamePlaceholder: 'Your username',
+    firstName: 'First Name',
+    firstNameRequired: 'First name is required',
+    firstNamePlaceholder: 'Your first name',
+    lastName: 'Last Name',
+    lastNameRequired: 'Last name is required',
+    lastNamePlaceholder: 'Your last name',
+    phone: 'Phone Number',
+    phoneRequired: 'Phone number is required',
+    phonePlaceholder: 'Your phone number',
+    location: 'Location',
+    locationRequired: 'Location is required',
+    locationPlaceholder: 'Your location',
     email: 'Email or Phone',
     emailRequired: 'Email is required',
     password: 'Password',
@@ -50,6 +62,18 @@ const translations = {
     username: 'Jina la Mtumiaji',
     usernameRequired: 'Jina ni lazima',
     usernamePlaceholder: 'Jina lako',
+    firstName: 'Jina la Kwanza',
+    firstNameRequired: 'Jina la kwanza ni lazima',
+    firstNamePlaceholder: 'Weka jina la kwanza',
+    lastName: 'Jina la Mwisho',
+    lastNameRequired: 'Jina la mwisho ni lazima',
+    lastNamePlaceholder: 'Weka jina la mwisho',
+    phone: 'Namba ya Simu',
+    phoneRequired: 'Namba ya simu ni lazima',
+    phonePlaceholder: 'Weka namba ya simu',
+    location: 'Mahali',
+    locationRequired: 'Mahali ni lazima',
+    locationPlaceholder: 'Weka mahali ulipo',
     email: 'Barua Pepe au Simu',
     emailRequired: 'Barua pepe ni lazima',
     password: 'Nenosiri',
@@ -78,6 +102,10 @@ interface LoginModalProps {
 
 interface AuthFormValues {
   username?: string
+  first_name?: string
+  last_name?: string
+  phone?: string
+  location?: string
   email: string
   password: string
 }
@@ -149,7 +177,16 @@ const LoginModal = ({
       const endpoint = isLogin ? 'login' : 'register'
       const body = isLogin
         ? { email: data.email, password: data.password }
-        : { ...data, role }
+        : {
+          username: data.username,
+          first_name: data.first_name,
+          last_name: data.last_name,
+          email: data.email,
+          password: data.password,
+          phone: data.phone,
+          location: data.location,
+          role
+        }
       
       const res = await fetch(`/api/auth/jwt/${endpoint}/`, {
         method: 'POST',
@@ -197,21 +234,87 @@ const LoginModal = ({
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {!isLogin && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {copy.username}
-              </label>
-              <div className="relative">
-                <UserPlus className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  {...register('username', { required: copy.usernameRequired })}
-                  disabled={loading}
-                  className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-ocean-500 focus:border-transparent transition-all"
-                  placeholder={copy.usernamePlaceholder}
-                />
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {copy.username}
+                </label>
+                <div className="relative">
+                  <UserPlus className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    {...register('username', { required: copy.usernameRequired })}
+                    disabled={loading}
+                    className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-ocean-500 focus:border-transparent transition-all"
+                    placeholder={copy.usernamePlaceholder}
+                  />
+                </div>
+                {errors.username && <p className="text-red-500 text-sm mt-1">{String(errors.username.message)}</p>}
               </div>
-              {errors.username && <p className="text-red-500 text-sm mt-1">{String(errors.username.message)}</p>}
-            </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {copy.firstName}
+                </label>
+                <div className="relative">
+                  <UserPlus className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    {...register('first_name', { required: copy.firstNameRequired })}
+                    disabled={loading}
+                    className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-ocean-500 focus:border-transparent transition-all"
+                    placeholder={copy.firstNamePlaceholder}
+                  />
+                </div>
+                {errors.first_name && <p className="text-red-500 text-sm mt-1">{String(errors.first_name.message)}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {copy.lastName}
+                </label>
+                <div className="relative">
+                  <UserPlus className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    {...register('last_name', { required: copy.lastNameRequired })}
+                    disabled={loading}
+                    className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-ocean-500 focus:border-transparent transition-all"
+                    placeholder={copy.lastNamePlaceholder}
+                  />
+                </div>
+                {errors.last_name && <p className="text-red-500 text-sm mt-1">{String(errors.last_name.message)}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {copy.phone}
+                </label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    {...register('phone', { required: copy.phoneRequired })}
+                    disabled={loading}
+                    className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-ocean-500 focus:border-transparent transition-all"
+                    placeholder={copy.phonePlaceholder}
+                  />
+                </div>
+                {errors.phone && <p className="text-red-500 text-sm mt-1">{String(errors.phone.message)}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {copy.location}
+                </label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    {...register('location', { required: copy.locationRequired })}
+                    disabled={loading}
+                    className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-ocean-500 focus:border-transparent transition-all"
+                    placeholder={copy.locationPlaceholder}
+                  />
+                </div>
+                {errors.location && <p className="text-red-500 text-sm mt-1">{String(errors.location.message)}</p>}
+              </div>
+            </>
           )}
 
           <div>

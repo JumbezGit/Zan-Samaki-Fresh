@@ -102,6 +102,7 @@ const AppShell = () => {
   const [role, setRole] = useState('')
   const [authReady, setAuthReady] = useState(false)
   const [adminSidebarOpen, setAdminSidebarOpen] = useState(false)
+  const [fisherSidebarOpen, setFisherSidebarOpen] = useState(false)
   const [showLogin, setShowLogin] = useState(false)
   const [loginMode, setLoginMode] = useState<'login' | 'register'>('login')
   const [selectedRole, setSelectedRole] = useState<UserRole>('buyer')
@@ -165,6 +166,7 @@ const AppShell = () => {
     setUser(null)
     setRole('')
     setAdminSidebarOpen(false)
+    setFisherSidebarOpen(false)
     navigate('/')
     toast.success(appCopy.loggedOut)
   }
@@ -209,7 +211,7 @@ const AppShell = () => {
     }
 
     if (role === 'fisher') {
-      return <FisherNavbar username={user.username} onLogout={logout} />
+      return <FisherNavbar username={user.username} onLogout={logout} onOpenSidebar={() => setFisherSidebarOpen(true)} />
     }
 
     if (role === 'buyer') {
@@ -248,7 +250,14 @@ const AppShell = () => {
           element={user && role ? <Navigate to={getDashboardPath(role)} replace /> : <Layout><HomePage onRoleAction={handleRoleAction} /></Layout>}
         />
         <Route path="/auth" element={!user ? <AuthPage setUser={setUser} setRole={setRole} /> : <Navigate to={getDashboardPath(role)} replace />} />
-        <Route path="/fisher" element={role === 'fisher' ? <Layout><FisherDashboard /></Layout> : <Navigate to={user && role ? getDashboardPath(role) : '/'} replace />} />
+        <Route
+          path="/fisher"
+          element={
+            role === 'fisher'
+              ? <Layout footerOffsetClassName="lg:pl-[304px]"><FisherDashboard isSidebarOpen={fisherSidebarOpen} onCloseSidebar={() => setFisherSidebarOpen(false)} /></Layout>
+              : <Navigate to={user && role ? getDashboardPath(role) : '/'} replace />
+          }
+        />
         <Route path="/buyer" element={role === 'buyer' ? <Layout><BuyerDashboard /></Layout> : <Navigate to={user && role ? getDashboardPath(role) : '/'} replace />} />
         <Route path="/buyer/orders" element={role === 'buyer' ? <Layout><BuyerOrdersPage /></Layout> : <Navigate to={user && role ? getDashboardPath(role) : '/'} replace />} />
         <Route path="/buyer/live" element={role === 'buyer' ? <Layout><BuyerLivePage /></Layout> : <Navigate to={user && role ? getDashboardPath(role) : '/'} replace />} />

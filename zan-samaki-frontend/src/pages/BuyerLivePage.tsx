@@ -76,11 +76,7 @@ const BuyerLivePage = () => {
       ruleTitle: 'Auction rule',
       ruleText: 'If two or more buyers bid within 1 minute, the price increases by the increment gap. If no other bidder joins within 1 minute, the auction closes for the last buyer.',
       fallbackMinute: '1 minute',
-      liveFeed: [
-        { id: 1, title: 'Buyers can join an auction instantly', time: 'Right now', detail: 'As soon as a buyer taps the current price, the system marks them as the highest bidder for that moment.' },
-        { id: 2, title: 'Price rises when more buyers compete', time: 'Within 1 minute', detail: 'If two or more buyers join an auction within 1 minute, the price rises by the fisher’s increment gap.' },
-        { id: 3, title: 'The last remaining buyer wins', time: 'After 1 minute', detail: 'If no other bidder joins within 1 minute after the latest bid, the system closes the auction and creates an order for the winner.' }
-      ]
+      liveFeed: []
     }
     : {
       loadError: 'Tatizo la kupakia minada',
@@ -112,11 +108,7 @@ const BuyerLivePage = () => {
       ruleTitle: 'Rule ya mnada',
       ruleText: 'Buyer wawili au zaidi wakibofya mnada ndani ya dakika 1, bei inapanda kwa increment gap. Ikiwa hakuna bidder mwingine ndani ya dakika 1, mfumo humaliza mnada kwa buyer wa mwisho.',
       fallbackMinute: 'Dakika 1',
-      liveFeed: [
-        { id: 1, title: 'Buyer anaweza kujiunga na mnada papo hapo', time: 'Sasa hivi', detail: 'Mara buyer akibonyeza bei ya sasa, mfumo utamweka kama bidder wa juu wa muda huo.' },
-        { id: 2, title: 'Bei huongezeka kwa gap ukiwa na buyers wengi', time: 'Ndani ya dakika 1', detail: 'Buyer wawili au zaidi wakichagua mnada ndani ya dakika 1, bei itapanda kwa increment gap ya mvuvi.' },
-        { id: 3, title: 'Mnada huuzwa kwa buyer wa mwisho akibaki peke yake', time: 'Baada ya dakika 1', detail: 'Kama hakuna bidder mwingine ndani ya dakika 1 baada ya bid ya mwisho, mfumo hufunga mnada na ku-create order kwa winner.' }
-      ]
+      liveFeed: []
     }
   const [liveAuctions, setLiveAuctions] = useState<LiveAuction[]>([])
   const [currentUsername, setCurrentUsername] = useState('')
